@@ -1,3 +1,6 @@
+#ifndef net_network_manager_h__
+#define net_network_manager_h__
+
 #include <atomic>
 #include <AccCtrl.h>
 #include "libxnet.h"
@@ -8,7 +11,7 @@ class NetworkManager
 {
 /********************singleton begin**********************/
 public:
-	static NetworkManager *getInstance();
+	static NetworkManager* getInstance();
 private:
 	static std::atomic<NetworkManager*> instance;
 	NetworkManager();
@@ -24,3 +27,5 @@ private:
 	std::queue<network_t> _networkFreeQueue;
 	network_t _networkIdMax;
 };
+
+#endif // net_network_manager_h__

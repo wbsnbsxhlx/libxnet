@@ -1,3 +1,6 @@
+#ifndef net_network_h__
+#define net_network_h__
+
 #include <windows.h>
 
 class Network
@@ -16,3 +19,5 @@ private:
 	SOCKET _socket;
 	int _threamNum;
 };
+
+#endif // net_network_h__
