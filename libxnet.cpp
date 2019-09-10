@@ -1,9 +1,13 @@
 // libxnet.cpp : 定义 DLL 应用程序的导出函数。
 //
 
-#include "libxnet.h"
 #include <windows.h>
 #include "stdio.h"
+
+#include "libxnet.h"
+#include "net_network_manager.h"
+#include "net_network.h"
+#include "net_log.h"
 
 
 // 这是导出变量的一个示例
@@ -13,6 +17,29 @@ LIBXNET_API int nlibxnet=0;
 LIBXNET_API int fnlibxnet(void)
 {
 	return 42;
+}
+
+LIBXNET_API network_t net_create(int worker_num, int max_client, int recv_buf_size, int send_buf_size)
+{
+	return NetworkManager::getInstance()->createNetwork(worker_num, max_client, recv_buf_size, send_buf_size);
+}
+
+LIBXNET_API void net_destroy(network_t* network)
+{
+	NetworkManager::getInstance()->destroyNetwork(*network);
+	*network = -1;
+}
+
+LIBXNET_API int net_listen(network_t id, const char* ip, unsigned short port)
+{
+	Network* network = NetworkManager::getInstance()->getNetwork(id);
+	if (network != nullptr)
+	{
+		network->listen(ip, port);
+	}
+	else{
+		log(LOG_ERROR, "id:%d", id);
+	}
 }
 
 SocketObject::SocketObject(void)

@@ -2,6 +2,7 @@
 #define net_network_h__
 
 #include <windows.h>
+#include <thread>
 
 class Network
 {
@@ -9,15 +10,21 @@ public:
 	Network();
 	~Network();
 
+	static Network* create(int threadNum, int maxClient, int recvBufSize, int sendBufSize);
+
 	bool init(int threadNum, int maxClient, int recvBufSize, int sendBufSize);
-	BOOL listen(const char* local_addr, unsigned short port);
+	bool listen(const char* local_addr, unsigned short port);
 	void connect(const char* remote_addr, unsigned short port);
 
 	void shutdown();
 
 private:
-	SOCKET _socket;
 	int _threamNum;
+	int _maxClient;
+	int _recvBufSize;
+	int _sendBufSize;
+
+	std::thread* _threadList;
 };
 
 #endif // net_network_h__

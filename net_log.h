@@ -4,8 +4,8 @@
 
 enum LogType
 {
-	INFO,
-	ERROR
+	LOG_INFO,
+	LOG_ERROR
 };
 
 void log(LogType type, const char* formatTxt, ...);

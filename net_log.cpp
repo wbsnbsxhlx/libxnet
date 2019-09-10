@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <fstream>
 #include <string.h>
+#include <stdint.h>
 
 #define _CRT_SECURE_NO_WARNINGS
 
@@ -21,10 +22,13 @@ void log(LogType type, const char* formatTxt, ...)
 	}
 
 	sprintf_s(buf, "%s:%d %s:", __FILE__, __LINE__, info);
-	vsprintf_s(buf+strlen(buf),LOG_LENGTH_MAX-strlen(buf), formatTxt, argList);
+	vsprintf_s(buf+strlen(buf),LOG_LENGTH_MAX-strlen(buf)-1, formatTxt, argList);
 	
 	
 	std::ofstream ofs;
+	if (!ofs.is_open())
+		return;
+
 	ofs.open("net_log.log");
 
 	ofs << buf << std::endl;

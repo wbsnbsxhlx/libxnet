@@ -1,5 +1,6 @@
 #include "net_network_manager.h"
 #include "net_network.h"
+#include "net_log.h"
 #include <atomic>
 #include <mutex>
 
@@ -20,8 +21,49 @@ NetworkManager::~NetworkManager()
 
 network_t NetworkManager::createNetwork(int thread_num, int max_client, int recv_buf_size, int send_buf_size)
 {
-	Network* nw = new Network();
-	nw->init(thread_num, max_client, recv_buf_size, send_buf_size);
+	Network* nw = Network::create(thread_num, max_client, recv_buf_size, send_buf_size);
+	return _insertMap(nw);
+}
+
+bool NetworkManager::destroyNetwork(network_t id)
+{
+	if (_networkMap.count(id) > 0){
+		Network* network = _networkMap[id];
+		network->shutdown();
+		delete network;
+		return true;
+	}
+
+	log(LOG_ERROR, "id:%d", id);
+	return false;
+}
+
+Network* NetworkManager::getNetwork(network_t id)
+{
+	Network* ret = nullptr;
+
+	if (_networkMap.count(id) > 0){
+		ret = _networkMap[id];
+	}
+	return ret;
+}
+
+network_t NetworkManager::_insertMap(Network* nw)
+{
+	network_t id = _getFreeNetId();
+	_networkMap[id] = nw;
+
+	return id;
+}
+
+network_t NetworkManager::_getFreeNetId()
+{
+	network_t ret = _networkIdMax;
+	if (!_networkFreeQueue.empty()){
+		ret = _networkFreeQueue.front();
+		_networkFreeQueue.pop();
+	}
+	return ret;
 }
 
 NetworkManager* NetworkManager::getInstance()

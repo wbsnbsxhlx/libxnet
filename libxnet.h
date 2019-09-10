@@ -18,9 +18,13 @@
 
 
 typedef int32_t network_t;
+typedef int32_t net_conn_id_t;
 extern "C" {
 	LIBXNET_API network_t net_create(int worker_num, int max_client, int recv_buf_size, int send_buf_size);
 	LIBXNET_API void net_destroy(network_t* network);
+
+	LIBXNET_API int net_listen(network_t network, const char* local_addr, unsigned short port);
+	LIBXNET_API net_conn_id_t net_connect(network_t network, const char* remote_addr, unsigned short port);
 }
 // 此类是从 libxnet.dll 导出的
 class LIBXNET_API SocketObject {
