@@ -3,6 +3,7 @@
 
 #include <windows.h>
 #include <thread>
+#include "net_thread_listener.h"
 
 class Network
 {
@@ -24,7 +25,7 @@ private:
 	int _recvBufSize;
 	int _sendBufSize;
 
-	std::thread* _threadList;
+	NetThreadListener* _threadListener;
 };
 
 #endif // net_network_h__
