@@ -19,6 +19,10 @@
 
 typedef int32_t network_t;
 typedef int32_t net_conn_id_t;
+
+#define INVALID_CONN_ID -1
+#define INVALID_NETWORK -1
+
 extern "C" {
 	LIBXNET_API network_t net_create(int worker_num, int max_client, int recv_buf_size, int send_buf_size);
 	LIBXNET_API void net_destroy(network_t* network);
@@ -62,10 +66,6 @@ private:
 	char _ip[16];
 	uint16_t _port;
 };
-
-extern LIBXNET_API int nlibxnet;
-
-LIBXNET_API int fnlibxnet(void);
 
 
 #endif // libxnet_h__

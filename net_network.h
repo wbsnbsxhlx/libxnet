@@ -4,7 +4,10 @@
 #include <windows.h>
 #include <thread>
 #include "net_thread_listener.h"
+#include "libxnet.h"
+#include "net_conn_pool.h"
 
+class NetConnection;
 class Network
 {
 public:
@@ -18,12 +21,15 @@ public:
 	void connect(const char* remote_addr, unsigned short port);
 
 	void shutdown();
+	void addConn(NetConnection* conn);
 
 private:
 	int _threamNum;
 	int _maxClient;
 	int _recvBufSize;
 	int _sendBufSize;
+
+	NetConnectionPool* _connPool;
 
 	NetThreadListener* _threadListener;
 };

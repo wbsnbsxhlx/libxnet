@@ -10,15 +10,6 @@
 #include "net_log.h"
 
 
-// 这是导出变量的一个示例
-LIBXNET_API int nlibxnet=0;
-
-// 这是导出函数的一个示例。
-LIBXNET_API int fnlibxnet(void)
-{
-	return 42;
-}
-
 LIBXNET_API network_t net_create(int worker_num, int max_client, int recv_buf_size, int send_buf_size)
 {
 	return NetworkManager::getInstance()->createNetwork(worker_num, max_client, recv_buf_size, send_buf_size);

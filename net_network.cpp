@@ -56,31 +56,9 @@ bool Network::listen(const char* local_addr, unsigned short port)
 		return false;
 	}
 
-	SOCKET so = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (so == INVALID_SOCKET) {
-		log(LOG_ERROR, "listen error: ip:%s,port:%d", local_addr, port);
-		return false;
-	}
-	sockaddr_in addr;
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons(port);
-	addr.sin_addr.s_addr = inet_addr(local_addr);
-
-	int ret = bind(so, (sockaddr *)&addr, port);
-	if (ret == SOCKET_ERROR) {
-		log(LOG_ERROR, "bind %s:%d error", local_addr, port);
-		return false;
-	}
-
-	ret = ::listen(so, 10);
-	if (ret == SOCKET_ERROR) {
-		log(LOG_ERROR, "listen error, ip: %s:%d", local_addr, port);
-		return false;
-	}
-
 	_threadListener = new NetThreadListener();
-
-	return true;
+	_threadListener->setParent(this);
+	return _threadListener->start(local_addr, port);
 }
 
 void Network::shutdown()
