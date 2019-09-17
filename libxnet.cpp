@@ -33,6 +33,25 @@ LIBXNET_API int net_listen(network_t id, const char* ip, unsigned short port)
 	}
 }
 
+LIBXNET_API int net_send(network_t id, net_conn_id_t connId, void* data, size_t size)
+{
+	Network* network = NetworkManager::getInstance()->getNetwork(id);
+	if (network == nullptr)
+	{
+		log(LOG_ERROR, "id:%d", id);
+		return 0;
+	}
+
+	NetConnection* conn = network->getConnPool()->getConn(connId);
+	if (conn == nullptr)
+	{
+		log(LOG_ERROR, "conn is not exsist id:%d", connId);
+		return 0;
+	}
+	conn->send(data, size);
+	return 1;
+}
+
 SocketObject::SocketObject(void)
 	:_socket(INVALID_SOCKET)
 {

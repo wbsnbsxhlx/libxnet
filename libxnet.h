@@ -23,12 +23,22 @@ typedef int32_t net_conn_id_t;
 #define INVALID_CONN_ID -1
 #define INVALID_NETWORK -1
 
+typedef struct net_msg_s {
+	net_conn_id_t conn_id;
+	int type;
+	uint8_t* data;
+	size_t size;
+} net_msg_s;
+
 extern "C" {
 	LIBXNET_API network_t net_create(int worker_num, int max_client, int recv_buf_size, int send_buf_size);
 	LIBXNET_API void net_destroy(network_t* network);
 
 	LIBXNET_API int net_listen(network_t network, const char* local_addr, unsigned short port);
 	LIBXNET_API net_conn_id_t net_connect(network_t network, const char* remote_addr, unsigned short port);
+
+	LIBXNET_API int net_send(network_t network, net_conn_id_t connId, void* data, size_t size);
+	LIBXNET_API int net_recv(network_t network, net_msg_s* msg);
 }
 // 此类是从 libxnet.dll 导出的
 class LIBXNET_API SocketObject {

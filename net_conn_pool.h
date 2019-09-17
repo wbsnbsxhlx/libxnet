@@ -10,10 +10,14 @@ class NetConnectionPool
 {
 public:
 	NetConnectionPool();
-	net_conn_id_t addConn(NetConnection* conn);
 	bool removeConn(net_conn_id_t connId);
+	net_conn_id_t newConn(SOCKET so, const char* ip, unsigned short port);
+
+	NetConnection* getConn(net_conn_id_t id);
 
 private:
+	net_conn_id_t _addConn(NetConnection* conn);
+
 	std::map<net_conn_id_t, NetConnection*> _connMap;
 	std::queue<net_conn_id_t> _connIdFreeQueue;
 	net_conn_id_t _connIdMax;

@@ -37,3 +37,19 @@ bool NetConnection::init(SOCKET so, const char* ip, unsigned short port)
 	return true;
 }
 
+bool NetConnection::send(void* data, size_t size)
+{
+	int curLen = 0;
+	while (curLen != size)
+	{
+		int sendLen = ::send(_socket, (const char*)data, size + curLen, 0);
+		if (sendLen == 0){
+			log(LOG_ERROR,"send error curLen:%d, size:%d", curLen, size);
+			return false;
+		}
+		curLen += sendLen;
+	}
+
+	return true;
+}
+

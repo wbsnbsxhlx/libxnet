@@ -1,5 +1,6 @@
 #ifndef net_conn_h__
 #define net_conn_h__
+#include "libxnet.h"
 
 #include <windows.h>
 class NetConnection
@@ -9,6 +10,8 @@ public:
 
 	NetConnection();
 	bool init(SOCKET so, const char* ip, unsigned short port);
+
+	bool send(void* data, size_t size);
 	
 private:
 	char _ip[16];

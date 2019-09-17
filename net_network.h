@@ -23,6 +23,10 @@ public:
 	void shutdown();
 	void addConn(NetConnection* conn);
 
+	NetConnectionPool* getConnPool(){
+		return _connPool;
+	}
+
 private:
 	int _threamNum;
 	int _maxClient;

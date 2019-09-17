@@ -9,6 +9,7 @@ class NetThreadListener{
 public:
 	NetThreadListener();
 	bool start(const char* local_addr, unsigned short port);
+	void stop();
 	void run();
 	
 	bool setParent(Network* network);

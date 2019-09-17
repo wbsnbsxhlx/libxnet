@@ -15,6 +15,10 @@ NetThreadListener::NetThreadListener()
 
 bool NetThreadListener::start(const char* local_addr, unsigned short port)
 {
+	if (_isRun){
+		log(LOG_ERROR, "listener is running!");
+		return false;
+	}
 	if (_socket !=INVALID_SOCKET){
 		log(LOG_ERROR, "socket is exsist!");
 		return false;
@@ -45,7 +49,17 @@ bool NetThreadListener::start(const char* local_addr, unsigned short port)
 		return false;
 	}
 
+	_isRun = true;
 	_thread = new std::thread(&NetThreadListener::run, this);
+	return true;
+}
+
+void NetThreadListener::stop()
+{
+	_isRun = false;
+	_thread->join();
+	delete _thread;
+	_thread = nullptr;
 }
 
 void NetThreadListener::run()
@@ -55,8 +69,7 @@ void NetThreadListener::run()
 		int len = sizeof(addr);
 		SOCKET client = accept(_socket, (sockaddr*)&addr, &len);
 		//todo add connection
-		NetConnection* conn = NetConnection::create(client, inet_ntoa(addr.sin_addr) , ntohs(addr.sin_port));
-		_parent->addConn(conn);
+		net_conn_id_t id = _parent->getConnPool()->newConn(client, inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
 	}
 }
 
