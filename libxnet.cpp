@@ -48,7 +48,7 @@ LIBXNET_API int net_send(network_t id, net_conn_id_t connId, void* data, size_t 
 		log(LOG_ERROR, "conn is not exsist id:%d", connId);
 		return 0;
 	}
-	conn->send(data, size);
+	conn->write(data, size);
 	return 1;
 }
 

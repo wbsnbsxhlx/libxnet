@@ -10,6 +10,7 @@ NetConnectionPool::NetConnectionPool()
 net_conn_id_t NetConnectionPool::newConn(SOCKET so, const char* ip, unsigned short port)
 {
 	NetConnection* conn = NetConnection::create(so, ip, port);
+	conn->initBufSize(_sendBufSize, _recvBufSize);
 	return _addConn(conn);
 }
 
@@ -21,6 +22,12 @@ NetConnection* NetConnectionPool::getConn(net_conn_id_t connId)
 	}
 
 	return ret;
+}
+
+bool NetConnectionPool::init(int sendBufSize, int recvBufSize)
+{
+	_sendBufSize = sendBufSize;
+	_recvBufSize = recvBufSize;
 }
 
 bool NetConnectionPool::removeConn(net_conn_id_t connId)

@@ -65,6 +65,8 @@ void NetThreadListener::stop()
 void NetThreadListener::run()
 {
 	while (_isRun){
+		Sleep(1);
+
 		sockaddr_in addr;
 		int len = sizeof(addr);
 		SOCKET client = accept(_socket, (sockaddr*)&addr, &len);

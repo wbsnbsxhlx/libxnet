@@ -37,7 +37,7 @@ bool NetConnection::init(SOCKET so, const char* ip, unsigned short port)
 	return true;
 }
 
-bool NetConnection::send(void* data, size_t size)
+bool NetConnection::send()
 {
 	int curLen = 0;
 	while (curLen != size)
@@ -50,6 +50,18 @@ bool NetConnection::send(void* data, size_t size)
 		curLen += sendLen;
 	}
 
+	return true;
+}
+
+bool NetConnection::write(void* data, size_t size)
+{
+	_sendBuffer.write(data, size);
+}
+
+bool NetConnection::initBufSize(int sendBufSize, int recvBufSize)
+{
+	_sendBuffer.init(sendBufSize);
+	_recvBuffer.init(recvBufSize);
 	return true;
 }
 

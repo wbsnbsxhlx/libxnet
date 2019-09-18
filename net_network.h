@@ -3,10 +3,11 @@
 
 #include <windows.h>
 #include <thread>
-#include "net_thread_listener.h"
 #include "libxnet.h"
 #include "net_conn_pool.h"
 
+class NetThreadWroker;
+class NetThreadListener;
 class NetConnection;
 class Network
 {
@@ -28,7 +29,7 @@ public:
 	}
 
 private:
-	int _threamNum;
+	int _workerNum;
 	int _maxClient;
 	int _recvBufSize;
 	int _sendBufSize;
@@ -36,6 +37,7 @@ private:
 	NetConnectionPool* _connPool;
 
 	NetThreadListener* _threadListener;
+	NetThreadWroker** _threadWorkerList;
 };
 
 #endif // net_network_h__

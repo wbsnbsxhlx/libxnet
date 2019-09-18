@@ -1,13 +1,17 @@
 #include "net_network.h"
 #include "net_log.h"
+#include "net_thread_listener.h"
+#include "net_thread_worker.h"
 #include <thread>
 
 Network::Network()
-	:_threamNum(0),
+	:_workerNum(0),
 	_maxClient(0),
 	_recvBufSize(0),
 	_sendBufSize(0),
-	_threadListener(nullptr)
+	_connPool(nullptr),
+	_threadListener(nullptr),
+	_threadWorkerList(nullptr)
 {
 }
 
@@ -41,10 +45,19 @@ bool Network::init(int threadNum, int maxClient, int recvBufSize, int sendBufSiz
 		log(LOG_ERROR, "[sendBufSize=%d] sendBufSize must >64!", sendBufSize);
 	}
 
-	_threamNum = threadNum;
+	_workerNum = threadNum;
 	_maxClient = maxClient;
 	_recvBufSize = recvBufSize;
 	_sendBufSize = sendBufSize;
+
+	_connPool = new NetConnectionPool();
+	_connPool->init(sendBufSize, recvBufSize);
+
+	_threadWorkerList = new NetThreadWroker*[threadNum];
+	for (int i = 0; i < threadNum; ++i){
+		_threadWorkerList[i] = new NetThreadWroker();
+		_threadWorkerList[i]->start(maxClient / threadNum);
+	}
 
 	return true;
 }
@@ -65,6 +78,9 @@ void Network::shutdown()
 {
 	if (_threadListener != nullptr){
 		delete _threadListener;
+	}
+	if (_connPool != nullptr){
+		delete _connPool;
 	}
 }
 
