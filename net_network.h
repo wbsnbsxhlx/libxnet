@@ -22,7 +22,7 @@ public:
 	void connect(const char* remote_addr, unsigned short port);
 
 	void shutdown();
-	void addConn(NetConnection* conn);
+	void createConn(SOCKET so, const char* ip, unsigned short port);
 
 	NetConnectionPool* getConnPool(){
 		return _connPool;

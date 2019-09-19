@@ -1,6 +1,8 @@
 #include "libxnet.h"
 #include "net_thread_worker.h"
 #include "net_log.h"
+#include "net_conn.h"
+#include <vector>
 
 typedef struct net_fd_set {
 	u_int fd_count;
@@ -77,7 +79,77 @@ void NetThreadWroker::stop()
 void NetThreadWroker::run()
 {
 	while (_isRun){
-		Sleep(1);
+		if (_connList.size() <= 0){
+			Sleep(1);
+			continue;
+		}
+
+		NET_FD_ZERO(_readSet);
+		NET_FD_ZERO(_writeSet);
+		std::vector<NetConnection*> connVec;
+		
+		for (auto it = _connList.begin(); it != _connList.end(); ++it){
+			NetConnection* conn = *it;
+
+			if (conn->getSocket() == INVALID_SOCKET){
+				_eraseConn(it);
+				continue;
+			}
+			connVec.push_back(conn);
+
+			NET_FD_SET(conn->getSocket(), _readSet);
+
+			if (conn->hasSendData()) {
+				NET_FD_SET(conn->getSocket(), _writeSet);
+			}
+		}
+
+		timeval tv = { 0, 10 * 1000 };//‘›∂®10√Î
+		int num = select(0, (fd_set*)_readSet, (fd_set*)_writeSet, NULL, &tv);
+
+		for (int i = 0; (i < connVec.size()) && (num > 0); ++i) {
+			NetConnection* conn = connVec[i];
+
+			if (nullptr == conn)
+				continue;
+
+			bool proc = false;
+
+			if (conn->getSocket() != INVALID_SOCKET) {
+				if (NET_FD_ISSET(conn->getSocket(), _readSet)) {
+					conn->recv();
+					proc = true;
+				}
+			}
+
+			if (conn->getSocket() != INVALID_SOCKET) {
+				if (NET_FD_ISSET(conn->getSocket(), _writeSet)) {
+					conn->send();
+					proc = true;
+				}
+			}
+
+			if (proc)
+				num--;
+		}
 	}
+}
+
+bool NetThreadWroker::addConn(NetConnection* conn)
+{
+	if (_connList.size() >= _countMax){
+		log(LOG_ERROR, "workerList is full");
+		return false;
+	}
+
+	conn->retain();
+	return true;
+}
+
+bool NetThreadWroker::_eraseConn(std::list<NetConnection*>::iterator it)
+{
+	NetConnection* conn = *it;
+	conn->release();
+	_connList.erase(it);
 }
 

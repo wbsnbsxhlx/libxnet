@@ -80,3 +80,8 @@ void NetBuffer::remove(size_t len)
 	}
 }
 
+bool NetBuffer::empty()
+{
+	return _begin == _end;
+}
+

@@ -71,7 +71,7 @@ void NetThreadListener::run()
 		int len = sizeof(addr);
 		SOCKET client = accept(_socket, (sockaddr*)&addr, &len);
 		//todo add connection
-		net_conn_id_t id = _parent->getConnPool()->newConn(client, inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
+		_parent->createConn(client, inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
 	}
 }
 

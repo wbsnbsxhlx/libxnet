@@ -7,12 +7,6 @@ NetConnectionPool::NetConnectionPool()
 {
 
 }
-net_conn_id_t NetConnectionPool::newConn(SOCKET so, const char* ip, unsigned short port)
-{
-	NetConnection* conn = NetConnection::create(so, ip, port);
-	conn->initBufSize(_sendBufSize, _recvBufSize);
-	return _addConn(conn);
-}
 
 NetConnection* NetConnectionPool::getConn(net_conn_id_t connId)
 {
@@ -24,12 +18,6 @@ NetConnection* NetConnectionPool::getConn(net_conn_id_t connId)
 	return ret;
 }
 
-bool NetConnectionPool::init(int sendBufSize, int recvBufSize)
-{
-	_sendBufSize = sendBufSize;
-	_recvBufSize = recvBufSize;
-}
-
 bool NetConnectionPool::removeConn(net_conn_id_t connId)
 {
 	if (connId == INVALID_CONN_ID || _connMap.find(connId) == _connMap.end()){
@@ -38,20 +26,20 @@ bool NetConnectionPool::removeConn(net_conn_id_t connId)
 	}
 
 	NetConnection* conn = _connMap[connId];
+	conn->release();
+
 	_connMap.erase(connId);
-	delete conn;
 
 	return true;
 }
 
-net_conn_id_t NetConnectionPool::_addConn(NetConnection* conn)
+net_conn_id_t NetConnectionPool::addConn(NetConnection* conn)
 {
 	net_conn_id_t connId = INVALID_CONN_ID;
 
 	if (_connIdFreeQueue.empty()){
 		connId = _connIdMax++;
-	}
-	else {
+	}else {
 		connId = _connIdFreeQueue.front();
 		_connIdFreeQueue.pop();
 	}
@@ -59,8 +47,14 @@ net_conn_id_t NetConnectionPool::_addConn(NetConnection* conn)
 	if (_connMap.find(connId) != _connMap.end()){
 		return INVALID_CONN_ID;
 	}
-	_connMap[connId] = conn;
 
+	if (!conn->setConnId(connId)){
+		_connIdFreeQueue.push(connId);
+		return INVALID_CONN_ID;
+	}
+	
+	_connMap[connId] = conn;
+	conn->retain();
 
 	return connId;
 }

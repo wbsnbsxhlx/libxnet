@@ -10,19 +10,32 @@ public:
 	static NetConnection* create(SOCKET so, const char* ip, unsigned short port);
 
 	NetConnection();
+	~NetConnection();
 	bool init(SOCKET so, const char* ip, unsigned short port);
 
 	bool send();
 	bool write(void* data, size_t size);
 	bool initBufSize(int _sendBufSize, int _recvBufSize);
 
+	void retain();
+	void release();
+	bool setConnId(net_conn_id_t connId);
+
+	bool hasSendData(){ return _sendBuffer.empty(); }
+
+	net_conn_id_t getConnId(){ return _connId; }
+
+	SOCKET getSocket(){ return _socket; }
 private:
+	net_conn_id_t _connId;
 	char _ip[16];
 	unsigned short _port;
 	SOCKET _socket;
 
 	NetBuffer _sendBuffer;
 	NetBuffer _recvBuffer;
+
+	int _refCount;
 };
 
 #endif // net_conn_h__
