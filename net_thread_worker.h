@@ -13,8 +13,10 @@ public:
 	void stop();
 	void run();
 	bool addConn(NetConnection* conn);
+	bool removeConn(NetConnection* conn);
 private:
 	bool _eraseConn(std::list<NetConnection*>::iterator it);
+	bool _eraseConn(NetConnection* conn);
 	net_fd_set* _readSet;
 	net_fd_set* _writeSet;
 	bool _isRun;

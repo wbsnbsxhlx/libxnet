@@ -146,10 +146,21 @@ bool NetThreadWroker::addConn(NetConnection* conn)
 	return true;
 }
 
+bool NetThreadWroker::removeConn(NetConnection* conn)
+{
+	_eraseConn(conn);
+}
+
 bool NetThreadWroker::_eraseConn(std::list<NetConnection*>::iterator it)
 {
 	NetConnection* conn = *it;
 	conn->release();
 	_connList.erase(it);
+}
+
+bool NetThreadWroker::_eraseConn(NetConnection* conn)
+{
+	conn->release();
+	_connList.remove(conn);
 }
 

@@ -23,6 +23,7 @@ public:
 
 	void shutdown();
 	void createConn(SOCKET so, const char* ip, unsigned short port);
+	void removeConn(NetConnection* conn);
 
 	NetConnectionPool* getConnPool(){
 		return _connPool;

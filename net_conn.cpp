@@ -1,5 +1,8 @@
 #include "net_conn.h"
 #include "net_log.h"
+#include "net_network.h"
+#include <winsock2.h>
+#include <windows.h>
 
 NetConnection* NetConnection::create(SOCKET so, const char* ip, unsigned short port)
 {
@@ -13,6 +16,7 @@ NetConnection* NetConnection::create(SOCKET so, const char* ip, unsigned short p
 
 NetConnection::NetConnection()
 	:_connId(INVALID_CONN_ID),
+	_network(nullptr),
 	_ip(""),
 	_port(0),
 	_socket(INVALID_SOCKET),
@@ -25,6 +29,18 @@ NetConnection::~NetConnection()
 {
 	if (_socket != INVALID_SOCKET){
 		closesocket(_socket);
+	}
+}
+
+void NetConnection::retain()
+{
+	++_refCount;
+}
+
+void NetConnection::release()
+{
+	if (--_refCount <= 0){
+		delete this;
 	}
 }
 
@@ -46,18 +62,14 @@ bool NetConnection::init(SOCKET so, const char* ip, unsigned short port)
 	return true;
 }
 
-bool NetConnection::send()
+bool NetConnection::setNetwork(Network* network)
 {
-	int curLen = 0;
-	while (curLen != size)
-	{
-		int sendLen = ::send(_socket, (const char*)data, size + curLen, 0);
-		if (sendLen == 0){
-			log(LOG_ERROR,"send error curLen:%d, size:%d", curLen, size);
-			return false;
-		}
-		curLen += sendLen;
+	if (_network != nullptr){
+		log(LOG_ERROR, "network is exsist!");
+		return false;
 	}
+
+	_network = network;
 
 	return true;
 }
@@ -74,18 +86,6 @@ bool NetConnection::initBufSize(int sendBufSize, int recvBufSize)
 	return true;
 }
 
-void NetConnection::retain()
-{
-	++_refCount;
-}
-
-void NetConnection::release()
-{
-	if (--_refCount <= 0){
-		delete this;
-	}
-}
-
 bool NetConnection::setConnId(net_conn_id_t connId)
 {
 	if (_connId != INVALID_CONN_ID){
@@ -96,29 +96,74 @@ bool NetConnection::setConnId(net_conn_id_t connId)
 	return true;
 }
 
+bool NetConnection::send()
+{
+	int curLen = 0;
+	while (curLen != size)
+	{
+		int sendLen = ::send(_socket, (const char*)data, size + curLen, 0);
+		if (sendLen == 0){
+			log(LOG_ERROR, "send error curLen:%d, size:%d", curLen, size);
+			return false;
+		}
+		curLen += sendLen;
+	}
+
+	return true;
+}
+
 void NetConnection::recv()
 {
-	while (true){
+	while (_socket != INVALID_SOCKET){
 		size_t size = 0;
-		uint8_t* buf = _recvBuffer.pick(size);
+		uint8_t* buf = _recvBuffer.pickWrite(size);
 
 		if (size == 0) {
 			log(LOG_ERROR, "recv buffer is full.");
-			destroy();
-			return;
+			close();
+			break;
 		}
 
 		int len = ::recv(_socket, (char*)buf, size, 0);
 		if (len > 0) {
-			_recvBuffer.add(len);
+			_recvBuffer.writeLen(len);
 			if (len < size)
 				break;
 		}else {
-			if (!sendError)
-				return;
+			DWORD err = WSAGetLastError();
 
-			break;
+			if (err == WSAEWOULDBLOCK){
+				break;
+			}else{
+				close();
+				break;
+			}
 		}
+	}
+}
+
+void NetConnection::pushMsg()
+{
+	if (_recvBuffer.empty()){
+		return;
+	}
+
+	size_t size = 0;
+	uint8_t* buf = _recvBuffer.pickRead(size);
+}
+
+void NetConnection::close()
+{
+	shutdown();
+	_network->removeConn(this);
+}
+
+void NetConnection::shutdown()
+{
+	if (_socket != INVALID_SOCKET){
+		::shutdown(_socket, SD_BOTH);
+		::closesocket(_socket);
+		_socket = INVALID_SOCKET;
 	}
 }
 

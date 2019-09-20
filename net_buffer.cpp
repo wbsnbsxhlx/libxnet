@@ -11,6 +11,14 @@ NetBuffer::NetBuffer()
 
 }
 
+NetBuffer::~NetBuffer()
+{
+	if (_buffer != nullptr)
+	{
+		delete []_buffer;
+	}
+}
+
 void NetBuffer::init(size_t size)
 {
 	_buffer = new uint8_t[size];
@@ -42,7 +50,7 @@ bool NetBuffer::write(void* data, size_t size)
 	return true;
 }
 
-uint8_t* NetBuffer::pick(size_t& outSize)
+uint8_t* NetBuffer::pickRead(size_t& outSize)
 {
 	if (_end > _begin){
 		outSize = _end - _begin;
@@ -50,6 +58,28 @@ uint8_t* NetBuffer::pick(size_t& outSize)
 		outSize = _cap - _begin;
 	}
 	return _buffer + _begin;
+}
+
+uint8_t* NetBuffer::pickWrite(size_t& outSize)
+{
+	if (_begin <= _end){
+		outSize = _cap-_end;
+		if (_begin == 0){
+			outSize--;
+		}
+	}else{
+		outSize = _begin-_end-1;
+	}
+	return _buffer + _end;
+}
+
+void NetBuffer::writeLen(int len)
+{
+	_end += len;
+	_end %= _cap;
+	if (_end >= _begin){
+		log(LOG_ERROR, "write len error");
+	}
 }
 
 void NetBuffer::remove(size_t len)

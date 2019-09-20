@@ -88,7 +88,14 @@ void Network::createConn(SOCKET so, const char* ip, unsigned short port)
 {
 	NetConnection* conn = NetConnection::create(so, ip, port);
 	conn->retain();
+
 	conn->initBufSize(_sendBufSize, _recvBufSize);
+
+	if (!conn->setNetwork(this)){
+		conn->release();
+		return;
+	}
+
 	net_conn_id_t id = getConnPool()->addConn(conn);
 	if (id == INVALID_CONN_ID){
 		conn->release();
@@ -103,5 +110,13 @@ void Network::createConn(SOCKET so, const char* ip, unsigned short port)
 	}
 
 	conn->release();
+}
+
+void Network::removeConn(NetConnection* conn)
+{
+	net_conn_id_t connId = conn->getConnId();
+	getConnPool()->removeConn(connId);
+	NetThreadWroker* _worker = _threadWorkerList[connId%_workerNum];
+	_worker->removeConn(conn);
 }
 
