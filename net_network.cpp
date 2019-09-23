@@ -120,3 +120,8 @@ void Network::removeConn(NetConnection* conn)
 	_worker->removeConn(conn);
 }
 
+void Network::pushMsg(NetMessage msg)
+{
+	throw std::logic_error("The method or operation is not implemented.");
+}
+

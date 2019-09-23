@@ -1,6 +1,8 @@
 #include "net_conn.h"
 #include "net_log.h"
 #include "net_network.h"
+#include "net_header.h"
+#include "libxnet.h"
 #include <winsock2.h>
 #include <windows.h>
 
@@ -140,6 +142,8 @@ void NetConnection::recv()
 			}
 		}
 	}
+
+	pushMsg();
 }
 
 void NetConnection::pushMsg()
@@ -148,8 +152,29 @@ void NetConnection::pushMsg()
 		return;
 	}
 
-	size_t size = 0;
-	uint8_t* buf = _recvBuffer.pickRead(size);
+	NetMessage msg;
+	while (_recvBuffer.makeMsg(msg))
+	{
+		msg.conn_id = _connId;
+		msg.type = NET_MSG_DATA;
+		_network->pushMsg(msg);
+		_recvBuffer.readLen(sizeof(NetMsgHeader) + msg.size);
+	}
+
+// 	size_t bufSize = _recvBuffer.length();
+// 	uint8_t* buf = new uint8_t[bufSize];
+// 	_recvBuffer.copyTo(buf);
+// 
+// 	NetMsgHeader header;
+// 	memcpy(&header, buf, sizeof(header));
+// 	_recvBuffer.readLen(header.size);
+// 	
+// 	NetMessage msg;
+// 	msg.conn_id = _connId;
+// 	msg.type = NET_MSG_DATA;
+// 	msg.data = buf;
+// 	msg.size = header.size;
+// 	_network->pushMsg(msg);
 }
 
 void NetConnection::close()

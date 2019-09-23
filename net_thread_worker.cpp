@@ -43,6 +43,7 @@ bool NetThreadWroker::start(int threadNum)
 	}
 	if (_thread != nullptr || nullptr != _readSet || nullptr != _writeSet){
 		log(LOG_ERROR, "thread is exsist!");
+		return false;
 	}
 
 	_countMax = threadNum;

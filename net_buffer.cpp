@@ -1,4 +1,5 @@
 #include "net_buffer.h"
+#include "net_header.h"
 #include "net_log.h"
 #include "stdlib.h"
 
@@ -82,7 +83,7 @@ void NetBuffer::writeLen(int len)
 	}
 }
 
-void NetBuffer::remove(size_t len)
+void NetBuffer::readLen(size_t len)
 {
 	if (len > _cap-1){
 		log(LOG_ERROR, "remove long! cap=%d len=%d", _cap, len);
@@ -113,5 +114,57 @@ void NetBuffer::remove(size_t len)
 bool NetBuffer::empty()
 {
 	return _begin == _end;
+}
+
+size_t NetBuffer::length()
+{
+	if (_begin <= _end){
+		return _end-_begin;
+	}else{
+		return _cap-_begin+_end;
+	}
+}
+
+void NetBuffer::copyTo(uint8_t* buf)
+{
+	if(_begin < _end){
+		memcpy(buf, _buffer + _begin, _end - _begin);
+	}else{
+		memcpy(buf, _buffer + _begin, _cap - _begin);
+		memcpy(buf, _buffer, _end);
+	}
+}
+
+bool NetBuffer::makeMsg(NetMessage& msg)
+{
+	NetMsgHeader header;
+	size_t headerSize = sizeof(NetMsgHeader);
+	if (headerSize <= length()){
+		return false;
+	}
+
+	void* dataPtr = nullptr;
+	if (_begin <= _end){
+		memcpy(&header, _buffer + _begin, headerSize);
+		dataPtr = _buffer + _begin + headerSize;
+	}else{
+		if (_cap-_begin > headerSize){
+			memcpy(&header, _buffer+_begin, headerSize);
+			dataPtr = _buffer + _begin + headerSize;
+		}else {
+			memcpy(&header, _buffer + _begin, _cap - _begin);
+			memcpy((uint8_t*)(&header) + _cap - _begin, _buffer, headerSize + _begin - _cap);
+			dataPtr = _buffer + headerSize + _begin - _cap;
+		}
+	}
+
+	if (header.size+headerSize > length()){
+		return false;
+	}
+	msg.data = new uint8_t[header.size];
+	memcpy(msg.data, dataPtr, header.size);
+	msg.size = header.size;
+
+	return true;
 }
 

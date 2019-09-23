@@ -39,6 +39,8 @@ private:
 
 	NetThreadListener* _threadListener;
 	NetThreadWroker** _threadWorkerList;
+public:
+	void pushMsg(NetMessage msg);
 };
 
 #endif // net_network_h__
