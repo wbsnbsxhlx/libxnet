@@ -3,6 +3,7 @@
 #include <fstream>
 #include <string.h>
 #include <stdint.h>
+#include <iostream>
 
 #define _CRT_SECURE_NO_WARNINGS
 

@@ -3,8 +3,6 @@
 #include "net_network.h"
 #include "net_header.h"
 #include "libxnet.h"
-#include <winsock2.h>
-#include <windows.h>
 
 NetConnection* NetConnection::create(SOCKET so, const char* ip, unsigned short port)
 {
@@ -19,30 +17,19 @@ NetConnection* NetConnection::create(SOCKET so, const char* ip, unsigned short p
 NetConnection::NetConnection()
 	:_connId(INVALID_CONN_ID),
 	_network(nullptr),
-	_ip(""),
 	_port(0),
 	_socket(INVALID_SOCKET),
 	_refCount(0)
 {
-
+	sender.isSender = true;
+	recver.isSender = false;
+	sender.conn = recver.conn = this;
 }
 
 NetConnection::~NetConnection()
 {
 	if (_socket != INVALID_SOCKET){
 		closesocket(_socket);
-	}
-}
-
-void NetConnection::retain()
-{
-	++_refCount;
-}
-
-void NetConnection::release()
-{
-	if (--_refCount <= 0){
-		delete this;
 	}
 }
 
@@ -58,8 +45,11 @@ bool NetConnection::init(SOCKET so, const char* ip, unsigned short port)
 		log(LOG_ERROR, "param so is invalid");
 		return false;
 	}
+	_socket = so;
 	strcpy_s(_ip, ip);
 	_port = port;
+
+	recv();
 
 	return true;
 }
@@ -78,7 +68,7 @@ bool NetConnection::setNetwork(Network* network)
 
 bool NetConnection::write(void* data, size_t size)
 {
-	_sendBuffer.write(data, size);
+	return _sendBuffer.write(data, size);
 }
 
 bool NetConnection::initBufSize(int sendBufSize, int recvBufSize)
@@ -101,9 +91,11 @@ bool NetConnection::setConnId(net_conn_id_t connId)
 bool NetConnection::send()
 {
 	int curLen = 0;
+	size_t size;
+	uint8_t *buf = _sendBuffer.pickWrite(size);
 	while (curLen != size)
 	{
-		int sendLen = ::send(_socket, (const char*)data, size + curLen, 0);
+		int sendLen = ::send(_socket, (const char*)buf, size + curLen, 0);
 		if (sendLen == 0){
 			log(LOG_ERROR, "send error curLen:%d, size:%d", curLen, size);
 			return false;
@@ -116,34 +108,40 @@ bool NetConnection::send()
 
 void NetConnection::recv()
 {
-	while (_socket != INVALID_SOCKET){
-		size_t size = 0;
-		uint8_t* buf = _recvBuffer.pickWrite(size);
-
-		if (size == 0) {
-			log(LOG_ERROR, "recv buffer is full.");
-			close();
-			break;
-		}
-
-		int len = ::recv(_socket, (char*)buf, size, 0);
-		if (len > 0) {
-			_recvBuffer.writeLen(len);
-			if (len < size)
-				break;
-		}else {
-			DWORD err = WSAGetLastError();
-
-			if (err == WSAEWOULDBLOCK){
-				break;
-			}else{
-				close();
-				break;
-			}
-		}
-	}
-
-	pushMsg();
+	DWORD dw = 0; DWORD fg = 0;
+	WSABUF wsabuf;
+	size_t len;
+	wsabuf.buf = (char *)_recvBuffer.pickWrite(len);
+	wsabuf.len = len;
+	WSARecv(_socket, &wsabuf, 1, &dw, &fg, &recver, NULL);
+	//while (_socket != INVALID_SOCKET){
+	//	size_t size = 0;
+	//	uint8_t* buf = _recvBuffer.pickWrite(size);
+	//
+	//	if (size == 0) {
+	//		log(LOG_ERROR, "recv buffer is full.");
+	//		close();
+	//		break;
+	//	}
+	//
+	//	int len = ::recv(_socket, (char*)buf, size, 0);
+	//	if (len > 0) {
+	//		_recvBuffer.writeLen(len);
+	//		if (len < size)
+	//			break;
+	//	}else {
+	//		DWORD err = WSAGetLastError();
+	//
+	//		if (err == WSAEWOULDBLOCK){
+	//			break;
+	//		}else{
+	//			close();
+	//			break;
+	//		}
+	//	}
+	//}
+	//
+	//pushMsg();
 }
 
 void NetConnection::pushMsg()
@@ -152,7 +150,7 @@ void NetConnection::pushMsg()
 		return;
 	}
 
-	NetMessage msg;
+	net_msg_s msg;
 	while (_recvBuffer.makeMsg(msg))
 	{
 		msg.conn_id = _connId;
@@ -160,27 +158,19 @@ void NetConnection::pushMsg()
 		_network->pushMsg(msg);
 		_recvBuffer.readLen(sizeof(NetMsgHeader) + msg.size);
 	}
-
-// 	size_t bufSize = _recvBuffer.length();
-// 	uint8_t* buf = new uint8_t[bufSize];
-// 	_recvBuffer.copyTo(buf);
-// 
-// 	NetMsgHeader header;
-// 	memcpy(&header, buf, sizeof(header));
-// 	_recvBuffer.readLen(header.size);
-// 	
-// 	NetMessage msg;
-// 	msg.conn_id = _connId;
-// 	msg.type = NET_MSG_DATA;
-// 	msg.data = buf;
-// 	msg.size = header.size;
-// 	_network->pushMsg(msg);
 }
 
 void NetConnection::close()
 {
-	shutdown();
 	_network->removeConn(this);
+	shutdown();
+
+	net_msg_s msg;
+	msg.conn_id = _connId;
+	msg.type = NET_MSG_DISCONNECTED;
+	msg.data = nullptr;
+	msg.size = 0;
+	_network->pushMsg(msg);
 }
 
 void NetConnection::shutdown()
@@ -191,4 +181,3 @@ void NetConnection::shutdown()
 		_socket = INVALID_SOCKET;
 	}
 }
-

@@ -1,12 +1,14 @@
 #ifndef net_network_manager_h__
 #define net_network_manager_h__
 
+#include "libxnet.h"
 #include <atomic>
 #include <AccCtrl.h>
-#include "libxnet.h"
 #include <map>
 #include <queue>
+#include <mutex>
 
+class Network;
 class NetworkManager
 {
 /********************singleton begin**********************/
@@ -25,12 +27,14 @@ public:
 	Network* getNetwork(network_t id);
 
 private:
-	network_t _insertMap(Network* nw);
 	network_t _getFreeNetId();
+	void _freeNetId(network_t id);
 
 	std::map<network_t, Network*> _networkMap;
-	std::queue<network_t> _networkFreeQueue;
+	std::vector<network_t> _freeNetworkVec;
 	network_t _networkIdMax;
+
+	std::mutex _nwmapLock;
 };
 
 #endif // net_network_manager_h__

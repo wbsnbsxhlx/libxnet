@@ -2,7 +2,7 @@
 #define net_thread_listener_h__
 
 #include <thread>
-#include <windows.h>
+#include "libxnet.h"
 
 class Network;
 class NetThreadListener{
@@ -12,12 +12,12 @@ public:
 	void stop();
 	void run();
 	
-	bool setParent(Network* network);
+	bool attachNetwork(Network* network);
 private:
 	bool _isRun;
 	std::thread* _thread;
 	SOCKET _socket;
-	Network* _parent;
+	Network* _network;
 };
 
 #endif // net_thread_listener_h__

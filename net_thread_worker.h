@@ -3,26 +3,29 @@
 
 #include <thread>
 #include <list>
+#include "net_conn.h"
 
-struct net_fd_set;
+//struct net_fd_set;
 class NetThreadWroker{
 public:
 	NetThreadWroker();
 
-	bool start(int threadNum);
+	bool start(HANDLE iocp);
 	void stop();
 	void run();
-	bool addConn(NetConnection* conn);
-	bool removeConn(NetConnection* conn);
+	//bool addConn(NetConnection* conn);
+	//bool removeConn(NetConnection* conn);
 private:
-	bool _eraseConn(std::list<NetConnection*>::iterator it);
-	bool _eraseConn(NetConnection* conn);
-	net_fd_set* _readSet;
-	net_fd_set* _writeSet;
+	//bool _eraseConn(std::list<NetConnection*>::iterator it);
+	//bool _eraseConn(NetConnection* conn);
+	//net_fd_set* _readSet;
+	//net_fd_set* _writeSet;
+	//size_t _countMax;
+	//std::list<NetConnection*> _connList;
+	HANDLE _iocp;
+
 	bool _isRun;
 	std::thread* _thread;
-	size_t _countMax;
-	std::list<NetConnection*> _connList;
 };
 
 #endif // net_thread_worker_h__

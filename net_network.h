@@ -1,7 +1,6 @@
 #ifndef net_network_h__
 #define net_network_h__
 
-#include <windows.h>
 #include <thread>
 #include "libxnet.h"
 #include "net_conn_pool.h"
@@ -15,19 +14,15 @@ public:
 	Network();
 	~Network();
 
-	static Network* create(int threadNum, int maxClient, int recvBufSize, int sendBufSize);
-
 	bool init(int threadNum, int maxClient, int recvBufSize, int sendBufSize);
 	bool listen(const char* local_addr, unsigned short port);
 	void connect(const char* remote_addr, unsigned short port);
 
 	void shutdown();
-	void createConn(SOCKET so, const char* ip, unsigned short port);
+	NetConnection* createConn(SOCKET so, const char* ip, unsigned short port);
 	void removeConn(NetConnection* conn);
 
-	NetConnectionPool* getConnPool(){
-		return _connPool;
-	}
+	NetConnection* getConn(net_conn_id_t connId) { return _connPool->getConn(connId); }
 
 private:
 	int _workerNum;
@@ -39,8 +34,16 @@ private:
 
 	NetThreadListener* _threadListener;
 	NetThreadWroker** _threadWorkerList;
+
+	std::queue<net_msg_s> _queueMsgs;
+	std::mutex _msgQueueLock;
+	void _clearQueueMsgs();
+
+	HANDLE _iocp;
 public:
-	void pushMsg(NetMessage msg);
+	void freeMsg(net_msg_s& msg);
+	void pushMsg(net_msg_s& msg);
+	bool popMsg(net_msg_s& msg);
 };
 
 #endif // net_network_h__

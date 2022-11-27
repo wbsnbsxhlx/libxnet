@@ -25,7 +25,7 @@ private:
 	size_t _cap;
 public:
 	void copyTo(uint8_t* buf);
-	bool makeMsg(NetMessage& msg);
+	bool makeMsg(net_msg_s& msg);
 };
 
 #endif // net_buffer_h__

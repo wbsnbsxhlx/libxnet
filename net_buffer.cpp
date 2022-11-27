@@ -3,6 +3,7 @@
 #include "net_log.h"
 #include "stdlib.h"
 
+
 NetBuffer::NetBuffer()
 	:_begin(0),
 	_end(0),
@@ -135,7 +136,7 @@ void NetBuffer::copyTo(uint8_t* buf)
 	}
 }
 
-bool NetBuffer::makeMsg(NetMessage& msg)
+bool NetBuffer::makeMsg(net_msg_s& msg)
 {
 	NetMsgHeader header;
 	size_t headerSize = sizeof(NetMsgHeader);
@@ -167,4 +168,3 @@ bool NetBuffer::makeMsg(NetMessage& msg)
 
 	return true;
 }
-

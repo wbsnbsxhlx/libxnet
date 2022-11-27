@@ -2,9 +2,15 @@
 #define net_conn_h__
 #include "libxnet.h"
 #include "net_buffer.h"
-#include <windows.h>
 
 class Network;
+class NetConnection;
+class NetConnectionOverlapped : public OVERLAPPED {
+public:
+	NetConnection* conn;
+	bool isSender;
+};
+
 class NetConnection
 {
 public:
@@ -12,9 +18,6 @@ public:
 
 	NetConnection();
 	~NetConnection();
-
-	void retain();
-	void release();
 
 	bool init(SOCKET so, const char* ip, unsigned short port);
 	bool setNetwork(Network* network);
@@ -48,6 +51,10 @@ private:
 	NetBuffer _recvBuffer;
 
 	int _refCount;
+
+public:
+	NetConnectionOverlapped sender;
+	NetConnectionOverlapped recver;
 };
 
 #endif // net_conn_h__
