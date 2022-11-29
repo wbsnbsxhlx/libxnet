@@ -23,7 +23,6 @@ private:
 public:
 	network_t createNetwork(int thread_num, int max_client, int recv_buf_size, int send_buf_size);
 	bool destroyNetwork(network_t id);
-
 	Network* getNetwork(network_t id);
 
 private:

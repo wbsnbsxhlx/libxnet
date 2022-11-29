@@ -19,13 +19,14 @@ NetworkManager::~NetworkManager() {
 }
 
 network_t NetworkManager::createNetwork(int thread_num, int max_client, int recv_buf_size, int send_buf_size) {
+	std::lock_guard<std::mutex> l(_nwmapLock);
+
 	Network *network = new Network();
 	if (!network->init(thread_num, max_client, recv_buf_size, send_buf_size)) {
 		delete network;
 		return INVALID_NETWORK;
 	}
 
-	std::lock_guard<std::mutex> l(_nwmapLock);
 	network_t id = _getFreeNetId();
 	_networkMap[id] = network;
 
@@ -33,6 +34,8 @@ network_t NetworkManager::createNetwork(int thread_num, int max_client, int recv
 }
 
 bool NetworkManager::destroyNetwork(network_t id) {
+	std::lock_guard<std::mutex> l(_nwmapLock);
+
 	if (_networkMap.empty()) {
 		log(LOG_ERROR, "id:%d", id);
 		return false;
@@ -42,7 +45,6 @@ bool NetworkManager::destroyNetwork(network_t id) {
 	network->shutdown();
 	delete network;
 
-	std::lock_guard<std::mutex> l(_nwmapLock);
 	_networkMap.erase(id);
 	_freeNetId(id);
 
@@ -50,6 +52,7 @@ bool NetworkManager::destroyNetwork(network_t id) {
 }
 
 Network* NetworkManager::getNetwork(network_t id) {
+	std::lock_guard<std::mutex> l(_nwmapLock);
 	Network* ret = nullptr;
 
 	if (_networkMap.count(id) > 0) {
