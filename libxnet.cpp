@@ -61,9 +61,8 @@ LIBXNET_API int net_recv(network_t id, net_msg_s* msg)
 	return -1;
 }
 
-LIBXNET_API void net_free_msg(network_t id, net_msg_s* msg) {
-	Network* network = NetworkManager::getInstance()->getNetwork(id);
-	if (network != nullptr) {
-		network->freeMsg(*msg);
+LIBXNET_API void net_free_msg(net_msg_s* msg) {
+	if (msg->type == NET_MSG_DATA && msg->data != nullptr) {
+		delete[] msg->data;
 	}
 }

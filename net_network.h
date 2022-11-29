@@ -3,6 +3,7 @@
 
 #include <thread>
 #include "libxnet.h"
+#include "net_msg_queue.h"
 #include "net_conn_pool.h"
 
 class NetThreadWroker;
@@ -35,11 +36,10 @@ private:
 	NetThreadListener* _threadListener;
 	NetThreadWroker** _threadWorkerList;
 
-	std::queue<net_msg_s> _queueMsgs;
-	std::mutex _msgQueueLock;
-	void _clearQueueMsgs();
+	NetMsgQueue msgQueue;
 
 	HANDLE _iocp;
+
 public:
 	void freeMsg(net_msg_s& msg);
 	void pushMsg(net_msg_s& msg);

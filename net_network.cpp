@@ -17,7 +17,6 @@ Network::Network()
 
 Network::~Network()
 {
-	_clearQueueMsgs();
 }
 
 bool Network::init(int threadNum, int maxClient, int recvBufSize, int sendBufSize)
@@ -129,32 +128,10 @@ void Network::removeConn(net_conn_id_t connId)
 	}
 }
 
-void Network::_clearQueueMsgs() {
-	while (!_queueMsgs.empty())
-	{
-		freeMsg(_queueMsgs.front());
-		_queueMsgs.pop();
-	}
-}
-
-void Network::freeMsg(net_msg_s& msg) {
-	if (msg.type == NET_MSG_DATA && msg.data != nullptr) {
-		delete[] msg.data;
-	}
-}
-
 void Network::pushMsg(net_msg_s& msg){
-	std::lock_guard<std::mutex> l(this->_msgQueueLock);
-	_queueMsgs.push(msg);
+	msgQueue.pushMsg(msg);
 }
 
 bool Network::popMsg(net_msg_s& msg) {
-	std::lock_guard<std::mutex> l(_msgQueueLock);
-	if (_queueMsgs.size() == 0)
-	{
-		return false;
-	}
-	msg = _queueMsgs.front();
-	_queueMsgs.pop();
-	return true;
+	return msgQueue.popMsg(msg);
 }
