@@ -96,17 +96,37 @@ NetConnection* Network::createConn(SOCKET so, const char* ip, unsigned short por
 		return nullptr;
 	}
 
-	if (!conn->setNetwork(this)) {
+	if (!conn->init(this, so, ip, port)) {
 		_connPool->removeConn(conn->getConnId());
 		return nullptr;
 	}
+
+	net_msg_s msg;
+	msg.conn_id = conn->getConnId();
+	msg.type = NET_MSG_CONNECTED;
+	msg.data = nullptr;
+	msg.size = 0;
+	pushMsg(msg);
+
+	CreateIoCompletionPort((HANDLE)so, _iocp, (DWORD)so, 0);
+	conn->recv();
+
 	return conn;
 }
 
-void Network::removeConn(NetConnection* conn)
+void Network::removeConn(net_conn_id_t connId)
 {
-	net_conn_id_t connId = conn->getConnId();
-	_connPool->removeConn(connId);
+	NetConnection* conn = getConn(connId);
+	conn->shutdown();
+	if (_connPool->removeConn(connId))
+	{
+		net_msg_s msg;
+		msg.conn_id = connId;
+		msg.type = NET_MSG_DISCONNECTED;
+		msg.data = nullptr;
+		msg.size = 0;
+		pushMsg(msg);
+	}
 }
 
 void Network::_clearQueueMsgs() {
@@ -124,7 +144,7 @@ void Network::freeMsg(net_msg_s& msg) {
 }
 
 void Network::pushMsg(net_msg_s& msg){
-	std::lock_guard<std::mutex> l(_msgQueueLock);
+	std::lock_guard<std::mutex> l(this->_msgQueueLock);
 	_queueMsgs.push(msg);
 }
 

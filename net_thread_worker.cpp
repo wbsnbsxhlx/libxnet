@@ -41,15 +41,27 @@ void NetThreadWroker::run() {
 	DWORD	dwKey;
 	LPOVERLAPPED lpOverlapped;
 	while (_isRun) {
-		bResult = GetQueuedCompletionStatus(_iocp, &dwNumRead, &dwKey, &lpOverlapped, 0);
-		if (lpOverlapped && bResult) {
+		bResult = GetQueuedCompletionStatus(_iocp, &dwNumRead, &dwKey, &lpOverlapped, INFINITE);
+		if (lpOverlapped){
 			NetConnectionOverlapped* no = (NetConnectionOverlapped*)lpOverlapped;
-			if (no->isSender) {
-				no->conn->send();
-			} else {
-				no->conn->pushMsg();
-				no->conn->recv();
+			if (dwNumRead == 0){
+				no->conn->close();
+				continue;
 			}
+			if (bResult) {
+				if (no->isSender) {
+					no->conn->sendedLength(dwNumRead);
+					no->conn->send();
+				} else {
+					no->conn->recvedLength(dwNumRead);
+					no->conn->pushMsg();
+					no->conn->recv();
+				}
+			} else {
+				no->conn->close();
+			}
+		}else{
+			log(LOG_ERROR, "WSAGetLastError:%d", WSAGetLastError());
 		}
 	}
 }

@@ -20,7 +20,7 @@ public:
 
 	void shutdown();
 	NetConnection* createConn(SOCKET so, const char* ip, unsigned short port);
-	void removeConn(NetConnection* conn);
+	void removeConn(net_conn_id_t connId);
 
 	NetConnection* getConn(net_conn_id_t connId) { return _connPool->getConn(connId); }
 

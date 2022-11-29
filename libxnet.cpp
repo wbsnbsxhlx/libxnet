@@ -50,3 +50,20 @@ LIBXNET_API int net_send(network_t id, net_conn_id_t connId, void* data, size_t 
 	conn->write(data, size);
 	return 0;
 }
+
+LIBXNET_API int net_recv(network_t id, net_msg_s* msg)
+{
+	Network* network = NetworkManager::getInstance()->getNetwork(id);
+	if (network != nullptr)
+	{
+		return network->popMsg(*msg) ? 0 : -1;
+	}
+	return -1;
+}
+
+LIBXNET_API void net_free_msg(network_t id, net_msg_s* msg) {
+	Network* network = NetworkManager::getInstance()->getNetwork(id);
+	if (network != nullptr) {
+		network->freeMsg(*msg);
+	}
+}

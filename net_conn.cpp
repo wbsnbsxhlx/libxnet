@@ -4,36 +4,26 @@
 #include "net_header.h"
 #include "libxnet.h"
 
-NetConnection* NetConnection::create(SOCKET so, const char* ip, unsigned short port)
-{
-	NetConnection* ret = new NetConnection();
-	if (!ret->init(so, ip, port)) {
-		delete ret;
-		ret = nullptr;
-	}
-	return ret;
-}
-
 NetConnection::NetConnection()
 	:_connId(INVALID_CONN_ID),
 	_network(nullptr),
 	_port(0),
-	_socket(INVALID_SOCKET),
-	_refCount(0)
+	_socket(INVALID_SOCKET)
 {
-	sender.isSender = true;
-	recver.isSender = false;
-	sender.conn = recver.conn = this;
+	sender = new NetConnectionOverlapped();
+	recver = new NetConnectionOverlapped();
+	sender->isSender = true;
+	recver->isSender = false;
+	sender->conn = recver->conn = this;
 }
 
 NetConnection::~NetConnection()
 {
-	if (_socket != INVALID_SOCKET){
-		closesocket(_socket);
-	}
+	delete sender;
+	delete recver;
 }
 
-bool NetConnection::init(SOCKET so, const char* ip, unsigned short port)
+bool NetConnection::init(Network* network, SOCKET so, const char* ip, unsigned short port)
 {
 	if (_socket != INVALID_SOCKET)
 	{
@@ -45,23 +35,16 @@ bool NetConnection::init(SOCKET so, const char* ip, unsigned short port)
 		log(LOG_ERROR, "param so is invalid");
 		return false;
 	}
-	_socket = so;
-	strcpy_s(_ip, ip);
-	_port = port;
 
-	recv();
-
-	return true;
-}
-
-bool NetConnection::setNetwork(Network* network)
-{
-	if (_network != nullptr){
+	if (_network != nullptr) {
 		log(LOG_ERROR, "network is exsist!");
 		return false;
 	}
 
 	_network = network;
+	_socket = so;
+	strcpy_s(_ip, ip);
+	_port = port;
 
 	return true;
 }
@@ -106,6 +89,14 @@ bool NetConnection::send()
 	return true;
 }
 
+void NetConnection::recvedLength(size_t len){
+	_recvBuffer.writeLen(len);
+}
+
+void NetConnection::sendedLength(size_t len){
+	_sendBuffer.readLen(len);
+}
+
 void NetConnection::recv()
 {
 	DWORD dw = 0; DWORD fg = 0;
@@ -113,35 +104,14 @@ void NetConnection::recv()
 	size_t len;
 	wsabuf.buf = (char *)_recvBuffer.pickWrite(len);
 	wsabuf.len = len;
-	WSARecv(_socket, &wsabuf, 1, &dw, &fg, &recver, NULL);
-	//while (_socket != INVALID_SOCKET){
-	//	size_t size = 0;
-	//	uint8_t* buf = _recvBuffer.pickWrite(size);
-	//
-	//	if (size == 0) {
-	//		log(LOG_ERROR, "recv buffer is full.");
-	//		close();
-	//		break;
-	//	}
-	//
-	//	int len = ::recv(_socket, (char*)buf, size, 0);
-	//	if (len > 0) {
-	//		_recvBuffer.writeLen(len);
-	//		if (len < size)
-	//			break;
-	//	}else {
-	//		DWORD err = WSAGetLastError();
-	//
-	//		if (err == WSAEWOULDBLOCK){
-	//			break;
-	//		}else{
-	//			close();
-	//			break;
-	//		}
-	//	}
-	//}
-	//
-	//pushMsg();
+	if (WSARecv(_socket, &wsabuf, 1, &dw, &fg, recver, NULL) != 0)
+	{
+		int error = GetLastError();
+		if (error != ERROR_IO_PENDING){
+			log(LOG_ERROR, "%d", WSAGetLastError());
+			close();
+		}
+	}
 }
 
 void NetConnection::pushMsg()
@@ -162,15 +132,7 @@ void NetConnection::pushMsg()
 
 void NetConnection::close()
 {
-	_network->removeConn(this);
-	shutdown();
-
-	net_msg_s msg;
-	msg.conn_id = _connId;
-	msg.type = NET_MSG_DISCONNECTED;
-	msg.data = nullptr;
-	msg.size = 0;
-	_network->pushMsg(msg);
+	_network->removeConn(getConnId());
 }
 
 void NetConnection::shutdown()
@@ -180,4 +142,5 @@ void NetConnection::shutdown()
 		::closesocket(_socket);
 		_socket = INVALID_SOCKET;
 	}
+	_network = nullptr;
 }

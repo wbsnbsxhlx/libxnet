@@ -23,12 +23,11 @@ void NetConnectionPool::clear() {
 }
 
 NetConnection* NetConnectionPool::_getFreeConn() {
-	if (_connIdMax >= _maxClient) {
-		return nullptr;
-	}
-
 	NetConnection *ret = nullptr;
 	if (_freeConnVec.size() == 0) {
+		if (_connIdMax >= _maxClient) {
+			return nullptr;
+		}
 		ret = new NetConnection();
 		ret->initBufSize(_sendBufSize, _recvBufSize);
 		ret->setConnId(_connIdMax++);
@@ -48,26 +47,21 @@ void NetConnectionPool::_freeConn(NetConnection* conn) {
 
 NetConnection* NetConnectionPool::createConn(SOCKET so, const char* ip, unsigned short port) {
 	std::lock_guard<std::mutex> l(_connmapLock);
-
 	NetConnection* ret = _getFreeConn();
 	if (ret == nullptr) {
 		return nullptr;
 	}
 
-	if (!ret->init(so, ip, port)) {
-		_freeConn(ret);
-		ret = nullptr;
-	}
 	return ret;
 }
 
 bool NetConnectionPool::removeConn(net_conn_id_t connId) {
+	std::lock_guard<std::mutex> l(_connmapLock);
 	if (connId == INVALID_CONN_ID || _connMap.find(connId) == _connMap.end()) {
 		log(LOG_ERROR, "remove error, connId:%d is not exsist!", connId);
 		return false;
 	}
 
-	std::lock_guard<std::mutex> l(_connmapLock);
 	NetConnection* conn = _connMap[connId];
 	_freeConn(conn);
 
@@ -75,10 +69,10 @@ bool NetConnectionPool::removeConn(net_conn_id_t connId) {
 }
 
 NetConnection* NetConnectionPool::getConn(net_conn_id_t connId) {
-	NetConnection* ret = nullptr;
+	std::lock_guard<std::mutex> l(_connmapLock);
 	if (_connMap.find(connId) != _connMap.end()) {
-		ret = _connMap[connId];
+		return _connMap[connId];
+	} else {
+		return nullptr;
 	}
-
-	return ret;
 }

@@ -79,9 +79,9 @@ void NetBuffer::writeLen(int len)
 {
 	_end += len;
 	_end %= _cap;
-	if (_end >= _begin){
-		log(LOG_ERROR, "write len error");
-	}
+	//if (_end >= _begin){
+	//	log(LOG_ERROR, "write len error");
+	//}
 }
 
 void NetBuffer::readLen(size_t len)
@@ -140,7 +140,7 @@ bool NetBuffer::makeMsg(net_msg_s& msg)
 {
 	NetMsgHeader header;
 	size_t headerSize = sizeof(NetMsgHeader);
-	if (headerSize <= length()){
+	if (headerSize > length()){
 		return false;
 	}
 

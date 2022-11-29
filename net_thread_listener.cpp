@@ -24,7 +24,7 @@ bool NetThreadListener::start(const char* local_addr, unsigned short port) {
 		log(LOG_ERROR, "thread is exsist!");
 	}
 
-	_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	_socket = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
 	if (_socket == INVALID_SOCKET) {
 		log(LOG_ERROR, "socket create error: ip:%s,port:%d", local_addr, port);
 		return false;
@@ -61,14 +61,16 @@ void NetThreadListener::stop() {
 }
 
 void NetThreadListener::run() {
+	int total = 0;
 	while (_isRun) {
-		Sleep(1);
-
 		sockaddr_in addr;
 		int len = sizeof(addr);
 		SOCKET client = accept(_socket, (sockaddr*)&addr, &len);
 		//todo add connection
-		_network->createConn(client, inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
+		if (_network->createConn(client, inet_ntoa(addr.sin_addr), ntohs(addr.sin_port)) == nullptr){
+			shutdown(client, SD_BOTH);
+			closesocket(client);
+		}
 	}
 }
 

@@ -14,13 +14,12 @@ public:
 class NetConnection
 {
 public:
-	static NetConnection* create(SOCKET so, const char* ip, unsigned short port);
-
 	NetConnection();
 	~NetConnection();
 
-	bool init(SOCKET so, const char* ip, unsigned short port);
+	bool init(Network* network, SOCKET so, const char* ip, unsigned short port);
 	bool setNetwork(Network* network);
+	Network* getNetwork() { return _network; }
 
 	bool write(void* data, size_t size);
 	bool initBufSize(int _sendBufSize, int _recvBufSize);
@@ -39,6 +38,9 @@ public:
 
 	void close();
 	void shutdown();
+
+	void recvedLength(size_t len);
+	void sendedLength(size_t len);
 private:
 	net_conn_id_t _connId;
 	char _ip[16];
@@ -50,11 +52,9 @@ private:
 	NetBuffer _sendBuffer;
 	NetBuffer _recvBuffer;
 
-	int _refCount;
-
 public:
-	NetConnectionOverlapped sender;
-	NetConnectionOverlapped recver;
+	NetConnectionOverlapped* sender;
+	NetConnectionOverlapped* recver;
 };
 
 #endif // net_conn_h__

@@ -13,6 +13,7 @@
 #define LIBXNET_API __declspec(dllimport)
 #endif
 
+#include"winerror.h"
 #include <winsock2.h>
 #include <windows.h>
 #pragma comment(lib,"ws2_32.lib")
@@ -45,6 +46,7 @@ extern "C" {
 
 	LIBXNET_API int net_send(network_t network, net_conn_id_t connId, void* data, size_t size);
 	LIBXNET_API int net_recv(network_t network, net_msg_s* msg);
+	LIBXNET_API void net_free_msg(network_t id, net_msg_s* msg);
 }
 
 #endif // libxnet_h__

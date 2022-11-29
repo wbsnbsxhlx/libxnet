@@ -5,8 +5,6 @@
 #include <stdint.h>
 #include <iostream>
 
-#define _CRT_SECURE_NO_WARNINGS
-
 const uint32_t LOG_LENGTH_MAX = 1024;
 
 void log(LogType type, const char* formatTxt, ...)
