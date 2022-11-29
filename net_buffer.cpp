@@ -135,7 +135,7 @@ void NetBuffer::copyTo(uint8_t* buf)
 		memcpy(buf, _buffer, _end);
 	}
 }
-
+#include <stdio.h>
 bool NetBuffer::makeMsg(net_msg_s& msg)
 {
 	NetMsgHeader header;
@@ -143,6 +143,11 @@ bool NetBuffer::makeMsg(net_msg_s& msg)
 	if (headerSize > length()){
 		return false;
 	}
+
+	char str[1025];
+	str[1024] = 0;
+	memcpy(str, _buffer, 1024);
+	printf("%s", str);
 
 	void* dataPtr = nullptr;
 	if (_begin <= _end){

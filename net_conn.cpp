@@ -114,7 +114,7 @@ void NetConnection::recv()
 	}
 }
 
-void NetConnection::pushMsg()
+void NetConnection::parseMsg()
 {
 	if (_recvBuffer.empty()){
 		return;

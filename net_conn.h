@@ -34,7 +34,7 @@ public:
 	bool send();
 	void recv();
 
-	void pushMsg();
+	void parseMsg();
 
 	void close();
 	void shutdown();
