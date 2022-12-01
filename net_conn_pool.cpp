@@ -1,4 +1,5 @@
 #include "net_conn_pool.h"
+#include "net_conn.h"
 #include "net_log.h"
 #include "libxnet.h"
 

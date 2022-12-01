@@ -4,11 +4,12 @@
 #include "net_thread_worker.h"
 #include <thread>
 
-Network::Network()
+Network::Network(int mode)
 	:_workerNum(0),
 	_maxClient(0),
 	_recvBufSize(0),
 	_sendBufSize(0),
+	EnginMode(mode),
 	_connPool(nullptr),
 	_threadListener(nullptr),
 	_threadWorkerList(nullptr)
@@ -100,12 +101,7 @@ NetConnection* Network::createConn(SOCKET so, const char* ip, unsigned short por
 		return nullptr;
 	}
 
-	net_msg_s msg;
-	msg.conn_id = conn->getConnId();
-	msg.type = NET_MSG_CONNECTED;
-	msg.data = nullptr;
-	msg.size = 0;
-	pushMsg(msg);
+	conn->engine->onConnCreate(conn);
 
 	CreateIoCompletionPort((HANDLE)so, _iocp, (DWORD)so, 0);
 	conn->recv();

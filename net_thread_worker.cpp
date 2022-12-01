@@ -54,7 +54,7 @@ void NetThreadWroker::run() {
 					no->conn->send();
 				} else {
 					no->conn->recvedLength(dwNumRead);
-					no->conn->parseMsg();
+					no->conn->procRecv();
 					no->conn->recv();
 				}
 			} else {

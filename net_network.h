@@ -12,8 +12,10 @@ class NetConnection;
 class Network
 {
 public:
-	Network();
+	Network(int mode);
 	~Network();
+
+	int EnginMode;
 
 	bool init(int threadNum, int maxClient, int recvBufSize, int sendBufSize);
 	bool listen(const char* local_addr, unsigned short port);

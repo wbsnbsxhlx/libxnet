@@ -7,11 +7,11 @@
 #include "net_network_manager.h"
 #include "net_network.h"
 #include "net_log.h"
+#include "net_conn.h"
 
-
-LIBXNET_API network_t net_create(int worker_num, int max_client, int recv_buf_size, int send_buf_size)
+LIBXNET_API network_t net_create(int worker_num, int max_client, int recv_buf_size, int send_buf_size, int mode)
 {
-	return NetworkManager::getInstance()->createNetwork(worker_num, max_client, recv_buf_size, send_buf_size);
+	return NetworkManager::getInstance()->createNetwork(worker_num, max_client, recv_buf_size, send_buf_size, mode);
 }
 
 LIBXNET_API void net_destroy(network_t* network)

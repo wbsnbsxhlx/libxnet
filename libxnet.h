@@ -19,13 +19,15 @@
 #pragma comment(lib,"ws2_32.lib")
 #include <stdint.h>
 
-
 extern "C" {
 	typedef int32_t network_t;
 	typedef int32_t net_conn_id_t;
 
 	const int INVALID_CONN_ID = - 1;
 	const int INVALID_NETWORK = - 1;
+
+	const int ENGINE_MODE_DEFAULT = 0;
+	const int ENGINE_MODE_WEBSOCKET = 1;
 
 	const int NET_MSG_CONNECTED = 1;
 	const int NET_MSG_DISCONNECTED = 2;
@@ -38,7 +40,7 @@ extern "C" {
 		size_t size;
 	} net_msg_s;
 
-	LIBXNET_API network_t net_create(int worker_num, int max_client, int recv_buf_size, int send_buf_size);
+	LIBXNET_API network_t net_create(int worker_num, int max_client, int recv_buf_size, int send_buf_size, int mode);
 	LIBXNET_API void net_destroy(network_t* network);
 
 	LIBXNET_API int net_listen(network_t network, const char* local_addr, unsigned short port);

@@ -2,6 +2,8 @@
 #define net_conn_h__
 #include "libxnet.h"
 #include "net_buffer.h"
+#include "net_parse_engine_default.h"
+#include "net_network.h"
 
 class Network;
 class NetConnection;
@@ -34,7 +36,7 @@ public:
 	bool send();
 	void recv();
 
-	void parseMsg();
+	void procRecv();
 
 	void close();
 	void shutdown();
@@ -51,10 +53,10 @@ private:
 
 	NetBuffer _sendBuffer;
 	NetBuffer _recvBuffer;
-
 public:
 	NetConnectionOverlapped* sender;
 	NetConnectionOverlapped* recver;
+	NetParseEngine* engine;
 };
 
 #endif // net_conn_h__

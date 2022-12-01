@@ -2,11 +2,11 @@
 #define net_conn_pool_h__
 
 #include "libxnet.h"
-#include "net_conn.h"
 #include <map>
 #include <queue>
 #include <mutex>
 
+class NetConnection;
 class NetConnectionPool
 {
 public:

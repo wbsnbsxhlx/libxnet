@@ -1,15 +1,15 @@
 #include "net_conn.h"
 #include "net_log.h"
 #include "net_network.h"
-#include "net_header.h"
 #include "libxnet.h"
+#include "net_parse_engine_websocket.h"
 
 NetConnection::NetConnection()
 	:_connId(INVALID_CONN_ID),
 	_network(nullptr),
 	_port(0),
-	_socket(INVALID_SOCKET)
-{
+	_socket(INVALID_SOCKET),
+	engine(nullptr){
 	sender = new NetConnectionOverlapped();
 	recver = new NetConnectionOverlapped();
 	sender->isSender = true;
@@ -17,21 +17,20 @@ NetConnection::NetConnection()
 	sender->conn = recver->conn = this;
 }
 
-NetConnection::~NetConnection()
-{
+NetConnection::~NetConnection() {
 	delete sender;
 	delete recver;
+	if (engine != nullptr) {
+		delete engine;
+	}
 }
 
-bool NetConnection::init(Network* network, SOCKET so, const char* ip, unsigned short port)
-{
-	if (_socket != INVALID_SOCKET)
-	{
+bool NetConnection::init(Network* network, SOCKET so, const char* ip, unsigned short port) {
+	if (_socket != INVALID_SOCKET) {
 		log(LOG_ERROR, "_socket is exsist!");
 		return false;
 	}
-	if (so == INVALID_SOCKET)
-	{
+	if (so == INVALID_SOCKET) {
 		log(LOG_ERROR, "param so is invalid");
 		return false;
 	}
@@ -41,29 +40,40 @@ bool NetConnection::init(Network* network, SOCKET so, const char* ip, unsigned s
 		return false;
 	}
 
+	if (engine != nullptr) {
+		delete engine;
+	}
+	if (network->EnginMode == ENGINE_MODE_DEFAULT) {
+		engine = new NetParseEngineDefault();
+	} else if (network->EnginMode == ENGINE_MODE_WEBSOCKET) {
+		engine = new NetParseEngineWebsocket();
+	}
 	_network = network;
 	_socket = so;
 	strcpy_s(_ip, ip);
 	_port = port;
 
+	_recvBuffer.clear();
+	_sendBuffer.clear();
+
 	return true;
 }
 
-bool NetConnection::write(void* data, size_t size)
-{
-	return _sendBuffer.write(data, size);
+bool NetConnection::write(void* data, size_t size) {
+	if (!engine->write(this, _sendBuffer, data, size)){
+		return false;
+	}
+	send();
 }
 
-bool NetConnection::initBufSize(int sendBufSize, int recvBufSize)
-{
+bool NetConnection::initBufSize(int sendBufSize, int recvBufSize) {
 	_sendBuffer.init(sendBufSize);
 	_recvBuffer.init(recvBufSize);
 	return true;
 }
 
-bool NetConnection::setConnId(net_conn_id_t connId)
-{
-	if (_connId != INVALID_CONN_ID){
+bool NetConnection::setConnId(net_conn_id_t connId) {
+	if (_connId != INVALID_CONN_ID) {
 		log(LOG_ERROR, "connection is exsist! connId=", _connId);
 		return false;
 	}
@@ -71,73 +81,68 @@ bool NetConnection::setConnId(net_conn_id_t connId)
 	return true;
 }
 
-bool NetConnection::send()
-{
-	int curLen = 0;
-	size_t size;
-	uint8_t *buf = _sendBuffer.pickWrite(size);
-	while (curLen != size)
-	{
-		int sendLen = ::send(_socket, (const char*)buf, size + curLen, 0);
-		if (sendLen == 0){
-			log(LOG_ERROR, "send error curLen:%d, size:%d", curLen, size);
+bool NetConnection::send() {
+	if (_sendBuffer.length() == 0){
+		return false;
+	}
+
+	DWORD dw = 0;
+	WSABUF wsabuf;
+	size_t len;
+	wsabuf.buf = (char *)_sendBuffer.pickRead(&len);
+	wsabuf.len = len;
+
+	if (0 != WSASend(_socket, &wsabuf, 1, &dw, 0, sender, NULL)) {
+		int error = GetLastError();
+		if (error != ERROR_IO_PENDING) {
+			log(LOG_ERROR, "connection is exsist! %s", error);
+			close();
 			return false;
 		}
-		curLen += sendLen;
 	}
 
 	return true;
 }
 
-void NetConnection::recvedLength(size_t len){
+void NetConnection::recvedLength(size_t len) {
 	_recvBuffer.writeLen(len);
 }
 
-void NetConnection::sendedLength(size_t len){
+void NetConnection::sendedLength(size_t len) {
 	_sendBuffer.readLen(len);
 }
 
-void NetConnection::recv()
-{
+void NetConnection::recv() {
 	DWORD dw = 0; DWORD fg = 0;
 	WSABUF wsabuf;
 	size_t len;
-	wsabuf.buf = (char *)_recvBuffer.pickWrite(len);
+	wsabuf.buf = (char *)_recvBuffer.pickWrite(&len);
 	wsabuf.len = len;
-	if (WSARecv(_socket, &wsabuf, 1, &dw, &fg, recver, NULL) != 0)
-	{
+	if (WSARecv(_socket, &wsabuf, 1, &dw, &fg, recver, NULL) != 0) {
 		int error = GetLastError();
-		if (error != ERROR_IO_PENDING){
+		if (error != ERROR_IO_PENDING) {
 			log(LOG_ERROR, "%d", WSAGetLastError());
 			close();
 		}
 	}
 }
 
-void NetConnection::parseMsg()
-{
-	if (_recvBuffer.empty()){
+void NetConnection::procRecv() {
+	if (_recvBuffer.empty()) {
 		return;
 	}
 
-	net_msg_s msg;
-	while (_recvBuffer.makeMsg(msg))
-	{
-		msg.conn_id = _connId;
-		msg.type = NET_MSG_DATA;
-		_network->pushMsg(msg);
-		_recvBuffer.readLen(sizeof(NetMsgHeader) + msg.size);
+	while (engine->procRecv(this, _recvBuffer));
+}
+
+void NetConnection::close() {
+	if (_network != nullptr) {
+		_network->removeConn(getConnId());
 	}
 }
 
-void NetConnection::close()
-{
-	_network->removeConn(getConnId());
-}
-
-void NetConnection::shutdown()
-{
-	if (_socket != INVALID_SOCKET){
+void NetConnection::shutdown() {
+	if (_socket != INVALID_SOCKET) {
 		::shutdown(_socket, SD_BOTH);
 		::closesocket(_socket);
 		_socket = INVALID_SOCKET;

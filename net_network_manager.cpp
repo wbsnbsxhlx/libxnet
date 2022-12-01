@@ -18,10 +18,10 @@ NetworkManager::~NetworkManager() {
 	WSACleanup();
 }
 
-network_t NetworkManager::createNetwork(int thread_num, int max_client, int recv_buf_size, int send_buf_size) {
+network_t NetworkManager::createNetwork(int thread_num, int max_client, int recv_buf_size, int send_buf_size, int mode) {
 	std::lock_guard<std::mutex> l(_nwmapLock);
 
-	Network *network = new Network();
+	Network *network = new Network(mode);
 	if (!network->init(thread_num, max_client, recv_buf_size, send_buf_size)) {
 		delete network;
 		return INVALID_NETWORK;
