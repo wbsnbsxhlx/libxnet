@@ -3,8 +3,8 @@
 
 #include <thread>
 #include "libxnet.h"
+#include "net_network.h"
 
-class Network;
 class NetThreadListener{
 public:
 	NetThreadListener();
