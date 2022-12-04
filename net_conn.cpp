@@ -2,14 +2,12 @@
 #include "net_log.h"
 #include "net_network.h"
 #include "libxnet.h"
-#include "net_parse_engine_websocket.h"
 
 NetConnection::NetConnection()
 	:_connId(INVALID_CONN_ID),
 	_network(nullptr),
 	_port(0),
-	_socket(INVALID_SOCKET),
-	engine(nullptr){
+	_socket(INVALID_SOCKET){
 	sender = new NetConnectionOverlapped();
 	recver = new NetConnectionOverlapped();
 	sender->isSender = true;
@@ -20,9 +18,6 @@ NetConnection::NetConnection()
 NetConnection::~NetConnection() {
 	delete sender;
 	delete recver;
-	if (engine != nullptr) {
-		delete engine;
-	}
 }
 
 bool NetConnection::init(Network* network, SOCKET so, const char* ip, unsigned short port) {
@@ -40,14 +35,6 @@ bool NetConnection::init(Network* network, SOCKET so, const char* ip, unsigned s
 		return false;
 	}
 
-	if (engine != nullptr) {
-		delete engine;
-	}
-	if (network->EnginMode == ENGINE_MODE_DEFAULT) {
-		engine = new NetParseEngineDefault();
-	} else if (network->EnginMode == ENGINE_MODE_WEBSOCKET) {
-		engine = new NetParseEngineWebsocket();
-	}
 	_network = network;
 	_socket = so;
 	strcpy_s(_ip, ip);
@@ -59,16 +46,16 @@ bool NetConnection::init(Network* network, SOCKET so, const char* ip, unsigned s
 	return true;
 }
 
-bool NetConnection::write(void* data, size_t size) {
-	if (!engine->write(this, _sendBuffer, data, size)){
-		return false;
-	}
-}
-
 bool NetConnection::initBufSize(int sendBufSize, int recvBufSize) {
 	_sendBuffer.init(sendBufSize);
 	_recvBuffer.init(recvBufSize);
 	return true;
+}
+
+bool NetConnection::write(void* data, size_t size) {
+	std::lock_guard<std::mutex> l(_sendBufLock);
+	onWrite(data, size);
+	return false;
 }
 
 bool NetConnection::setConnId(net_conn_id_t connId) {
@@ -81,6 +68,7 @@ bool NetConnection::setConnId(net_conn_id_t connId) {
 }
 
 bool NetConnection::send() {
+	std::lock_guard<std::mutex> l(_sendBufLock);
 	if (_sendBuffer.length() == 0){
 		return false;
 	}
@@ -104,10 +92,12 @@ bool NetConnection::send() {
 }
 
 void NetConnection::recvedLength(size_t len) {
+	std::lock_guard<std::mutex> l(_recvBufLock);
 	_recvBuffer.writeLen(len);
 }
 
 void NetConnection::sendedLength(size_t len) {
+	std::lock_guard<std::mutex> l(_sendBufLock);
 	_sendBuffer.readLen(len);
 }
 
@@ -115,6 +105,8 @@ void NetConnection::recv() {
 	DWORD dw = 0; DWORD fg = 0;
 	WSABUF wsabuf;
 	size_t len;
+
+	std::lock_guard<std::mutex> l(_recvBufLock);
 	wsabuf.buf = (char *)_recvBuffer.pickWrite(&len);
 	wsabuf.len = len;
 	if (WSARecv(_socket, &wsabuf, 1, &dw, &fg, recver, NULL) != 0) {
@@ -127,11 +119,11 @@ void NetConnection::recv() {
 }
 
 void NetConnection::procRecv() {
+	std::lock_guard<std::mutex> l(_recvBufLock);
 	if (_recvBuffer.empty()) {
 		return;
 	}
-
-	while (engine->procRecv(this, _recvBuffer));
+	while(onProcRecv());
 }
 
 void NetConnection::close() {
@@ -141,6 +133,7 @@ void NetConnection::close() {
 }
 
 void NetConnection::shutdown() {
+	std::lock_guard<std::mutex> l(_shutdownLock);
 	if (_socket != INVALID_SOCKET) {
 		::shutdown(_socket, SD_BOTH);
 		::closesocket(_socket);

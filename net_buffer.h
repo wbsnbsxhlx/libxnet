@@ -2,7 +2,6 @@
 #define net_buffer_h__
 
 #include "libxnet.h"
-#include <mutex>
 
 class NetBuffer{
 public:	
@@ -28,8 +27,6 @@ private:
 	size_t _begin;
 	size_t _end;
 	size_t _cap;
-
-	std::mutex _bufLock;
 };
 
 #endif // net_buffer_h__

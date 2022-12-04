@@ -15,7 +15,7 @@ public:
 	Network(int mode);
 	~Network();
 
-	int EnginMode;
+	int NetMode;
 
 	bool init(int threadNum, int maxClient, int recvBufSize, int sendBufSize);
 	bool listen(const char* local_addr, unsigned short port);

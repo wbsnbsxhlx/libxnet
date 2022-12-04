@@ -26,8 +26,8 @@ extern "C" {
 	const int INVALID_CONN_ID = -1;
 	const int INVALID_NETWORK = -1;
 
-	const int ENGINE_MODE_DEFAULT = 0;
-	const int ENGINE_MODE_WEBSOCKET = 1;
+	const int NET_MODE_DEFAULT = 0;
+	const int NET_MODE_WEBSOCKET = 1;
 
 	const int NET_MSG_CONNECTED = 1;
 	const int NET_MSG_DISCONNECTED = 2;

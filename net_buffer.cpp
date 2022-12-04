@@ -23,7 +23,6 @@ void NetBuffer::init(size_t size) {
 }
 
 bool NetBuffer::write(void* data, size_t size) {
-	std::lock_guard<std::mutex> l(_bufLock);
 	if (_begin <= _end) {
 		if (_cap - _end + _begin <= size) {
 			log(LOG_ERROR, "size is long! size = %d cap = %d", size, _cap);
@@ -47,7 +46,6 @@ bool NetBuffer::write(void* data, size_t size) {
 }
 
 uint8_t* NetBuffer::pickRead(size_t* outSize) {
-	std::lock_guard<std::mutex> l(_bufLock);
 	if (_end >= _begin) {
 		*outSize = _end - _begin;
 	} else {
@@ -57,7 +55,6 @@ uint8_t* NetBuffer::pickRead(size_t* outSize) {
 }
 
 uint8_t* NetBuffer::pickWrite(size_t* outSize) {
-	std::lock_guard<std::mutex> l(_bufLock);
 	if (_begin <= _end) {
 		*outSize = _cap - _end;
 		if (_begin == 0) {
@@ -70,16 +67,11 @@ uint8_t* NetBuffer::pickWrite(size_t* outSize) {
 }
 
 void NetBuffer::writeLen(int len) {
-	std::lock_guard<std::mutex> l(_bufLock);
 	_end += len;
 	_end %= _cap;
-	//if (_end >= _begin){
-	//	log(LOG_ERROR, "write len error");
-	//}
 }
 
 void NetBuffer::readLen(size_t len) {
-	std::lock_guard<std::mutex> l(_bufLock);
 	if (len > _cap - 1) {
 		log(LOG_ERROR, "remove long! cap=%d len=%d", _cap, len);
 		return;
@@ -107,12 +99,10 @@ void NetBuffer::readLen(size_t len) {
 }
 
 bool NetBuffer::empty() {
-	std::lock_guard<std::mutex> l(_bufLock);
 	return _begin == _end;
 }
 
 size_t NetBuffer::length() {
-	std::lock_guard<std::mutex> l(_bufLock);
 	if (_begin <= _end) {
 		return _end - _begin;
 	} else {
@@ -121,7 +111,6 @@ size_t NetBuffer::length() {
 }
 
 bool NetBuffer::copyTo(uint8_t* buf, size_t size) {
-	std::lock_guard<std::mutex> l(_bufLock);
 	if (size > length()) {
 		return false;
 	}
@@ -140,7 +129,6 @@ bool NetBuffer::copyTo(uint8_t* buf, size_t size) {
 }
 
 void NetBuffer::copyTo(uint8_t* buf) {
-	std::lock_guard<std::mutex> l(_bufLock);
 	if (_begin < _end) {
 		memcpy(buf, _buffer + _begin, _end - _begin);
 	} else {
@@ -150,6 +138,5 @@ void NetBuffer::copyTo(uint8_t* buf) {
 }
 
 void NetBuffer::clear() {
-	std::lock_guard<std::mutex> l(_bufLock);
 	_begin = _end = 0;
 }

@@ -9,7 +9,7 @@ Network::Network(int mode)
 	_maxClient(0),
 	_recvBufSize(0),
 	_sendBufSize(0),
-	EnginMode(mode),
+	NetMode(mode),
 	_connPool(nullptr),
 	_threadListener(nullptr),
 	_threadWorkerList(nullptr)
@@ -43,7 +43,7 @@ bool Network::init(int threadNum, int maxClient, int recvBufSize, int sendBufSiz
 	_recvBufSize = recvBufSize;
 	_sendBufSize = sendBufSize;
 
-	_connPool = new NetConnectionPool();
+	_connPool = new NetConnectionPool(NetMode);
 	_connPool->init(maxClient, sendBufSize, recvBufSize);
 
 	_iocp = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
@@ -101,7 +101,7 @@ NetConnection* Network::createConn(SOCKET so, const char* ip, unsigned short por
 		return nullptr;
 	}
 
-	conn->engine->onConnCreate(conn);
+	conn->onConnCreate();
 
 	CreateIoCompletionPort((HANDLE)so, _iocp, (DWORD)so, 0);
 	conn->recv();
@@ -112,7 +112,10 @@ NetConnection* Network::createConn(SOCKET so, const char* ip, unsigned short por
 void Network::removeConn(net_conn_id_t connId)
 {
 	NetConnection* conn = getConn(connId);
-	conn->shutdown();
+	if (conn != nullptr){
+		conn->shutdown();
+	}
+	
 	if (_connPool->removeConn(connId))
 	{
 		net_msg_s msg;

@@ -1,10 +1,13 @@
 #include "net_conn_pool.h"
 #include "net_conn.h"
+#include "net_conn_default.h"
+#include "net_conn_websocket.h"
 #include "net_log.h"
 #include "libxnet.h"
 
-NetConnectionPool::NetConnectionPool()
-	:_connIdMax(1) {
+NetConnectionPool::NetConnectionPool(int netmode)
+	:_connIdMax(1),
+	_netMode(netmode) {
 
 }
 
@@ -18,7 +21,7 @@ bool NetConnectionPool::init(int maxClient, int sendBufSize, int recvBufSize) {
 
 
 void NetConnectionPool::clear() {
-	for (auto it = _connMap.begin(); it != _connMap.end(); ){
+	for (auto it = _connMap.begin(); it != _connMap.end();) {
 		it++->second->close();
 	}
 }
@@ -29,7 +32,11 @@ NetConnection* NetConnectionPool::_getFreeConn() {
 		if (_connIdMax >= _maxClient) {
 			return nullptr;
 		}
-		ret = new NetConnection();
+		if (_netMode == NET_MODE_DEFAULT) {
+			ret = new NetConnectionDefault();
+		} else if (NET_MODE_WEBSOCKET) {
+			ret = new NetConnectionWebsocket();
+		}
 		ret->initBufSize(_sendBufSize, _recvBufSize);
 		ret->setConnId(_connIdMax++);
 	} else {

@@ -2,8 +2,8 @@
 #define net_conn_h__
 #include "libxnet.h"
 #include "net_buffer.h"
-#include "net_parse_engine_default.h"
 #include "net_network.h"
+#include <mutex>
 
 class Network;
 class NetConnection;
@@ -43,6 +43,8 @@ public:
 
 	void recvedLength(size_t len);
 	void sendedLength(size_t len);
+
+	virtual void onConnCreate() = 0;
 private:
 	net_conn_id_t _connId;
 	char _ip[16];
@@ -50,13 +52,20 @@ private:
 	SOCKET _socket;
 
 	Network* _network;
+	std::mutex _shutdownLock;
+
+protected:
+	virtual bool onProcRecv() = 0;
+	virtual bool onWrite(void* data, size_t size) = 0;
 
 	NetBuffer _sendBuffer;
+	std::mutex _sendBufLock;
 	NetBuffer _recvBuffer;
+	std::mutex _recvBufLock;
+
 public:
 	NetConnectionOverlapped* sender;
 	NetConnectionOverlapped* recver;
-	NetParseEngine* engine;
 };
 
 #endif // net_conn_h__
