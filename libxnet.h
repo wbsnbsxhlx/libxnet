@@ -23,8 +23,8 @@ extern "C" {
 	typedef int32_t network_t;
 	typedef int32_t net_conn_id_t;
 
-	const int INVALID_CONN_ID = - 1;
-	const int INVALID_NETWORK = - 1;
+	const int INVALID_CONN_ID = -1;
+	const int INVALID_NETWORK = -1;
 
 	const int ENGINE_MODE_DEFAULT = 0;
 	const int ENGINE_MODE_WEBSOCKET = 1;

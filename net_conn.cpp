@@ -63,7 +63,6 @@ bool NetConnection::write(void* data, size_t size) {
 	if (!engine->write(this, _sendBuffer, data, size)){
 		return false;
 	}
-	send();
 }
 
 bool NetConnection::initBufSize(int sendBufSize, int recvBufSize) {
