@@ -12,13 +12,4 @@ uint64_t get_cur_tick() {
 	return li.QuadPart / 10000;
 }
 
-net_conn_id_t gen_conn_id(uint32_t idx) {
-	uint64_t tick = get_cur_tick();
-	return (net_conn_id_t)(((tick & 0x3ffff) << 14) | (idx & 0x3fff));
-}
-
-uint32_t get_conn_id_idx(net_conn_id_t connId) {
-	return connId & 0x3fff;
-}
-
 #endif // net_util_h__
