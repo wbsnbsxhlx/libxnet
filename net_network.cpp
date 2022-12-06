@@ -91,12 +91,12 @@ void Network::shutdown()
 
 NetConnection* Network::createConn(SOCKET so, const char* ip, unsigned short port)
 {
-	NetConnection *conn = _connPool->createConn(so, ip, port);
+	NetConnection *conn = _connPool->createConn();
 	if (conn == nullptr){
 		return nullptr;
 	}
 
-	if (!conn->init(this, so, ip, port)) {
+	if (!conn->init() || !conn->initNetwork(this, so, ip, port)) {
 		_connPool->removeConn(conn->getConnId());
 		return nullptr;
 	}
@@ -125,6 +125,22 @@ void Network::removeConn(net_conn_id_t connId)
 		msg.size = 0;
 		pushMsg(msg);
 	}
+}
+
+void Network::pushMsg(int typ, net_conn_id_t conn_id, uint8_t* data, size_t size) {
+	net_msg_s msg;
+	msg.conn_id = conn_id;
+	msg.type = typ;
+	if (data != nullptr && size != 0) {
+		msg.data = new uint8_t[size];
+		memcpy(msg.data, data, size);
+		msg.size = size;
+	} else {
+		msg.data = nullptr;
+		msg.size = 0;
+	}
+	
+	msgQueue.pushMsg(msg);
 }
 
 void Network::pushMsg(net_msg_s& msg){

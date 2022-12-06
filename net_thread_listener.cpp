@@ -61,7 +61,6 @@ void NetThreadListener::stop() {
 }
 
 void NetThreadListener::run() {
-	int total = 0;
 	while (_isRun) {
 		sockaddr_in addr;
 		int len = sizeof(addr);

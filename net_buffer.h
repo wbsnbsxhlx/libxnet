@@ -12,12 +12,13 @@ public:
 
 	bool copyTo(uint8_t* buf, size_t size);
 	void copyTo(uint8_t* buf);
-
+	bool copyTo(uint8_t*buf, size_t startPos, size_t size);
 	uint8_t* pickRead(size_t* outSize);
 	uint8_t* pickWrite(size_t* outSize);
 	void writeLen(int len);
 	void readLen(size_t len);
 	bool empty();
+	size_t cap() { return _cap; }
 
 	size_t length();
 	void clear();

@@ -23,9 +23,13 @@ void NetBuffer::init(size_t size) {
 }
 
 bool NetBuffer::write(void* data, size_t size) {
+	if (size == 0){
+		//net_log_error("write size is 0\n");
+		return false;
+	}
 	if (_begin <= _end) {
 		if (_cap - _end + _begin <= size) {
-			log(LOG_ERROR, "size is long! size = %d cap = %d", size, _cap);
+			net_log_error("size is long! size = %d cap = %d\n", size, _cap);
 			return false;
 		}
 		size_t maxLen = size < (_cap - _end) ? size : (_cap - _end);
@@ -36,7 +40,7 @@ bool NetBuffer::write(void* data, size_t size) {
 		}
 	} else {
 		if (_begin - _end <= size) {
-			log(LOG_ERROR, "size is long! size = %d cap = %d", size, _cap);
+			net_log_error("size is long! size = %d cap = %d\n", size, _cap);
 			return false;
 		}
 		memcpy(_buffer + _end, data, size);
@@ -73,14 +77,14 @@ void NetBuffer::writeLen(int len) {
 
 void NetBuffer::readLen(size_t len) {
 	if (len > _cap - 1) {
-		log(LOG_ERROR, "remove long! cap=%d len=%d", _cap, len);
+		net_log_error("remove long! cap=%d len=%d\n", _cap, len);
 		return;
 	}
 	if (_begin < _end) {
 		_begin += len;
 
 		if (_begin > _end) {
-			log(LOG_ERROR, "remove long!! cap=%d len=%d", _cap, len);
+			net_log_error("remove long!! cap=%d len=%d\n", _cap, len);
 			_begin = _end = 0;
 			return;
 		}
@@ -90,7 +94,7 @@ void NetBuffer::readLen(size_t len) {
 			_begin -= _cap;
 
 			if (_begin > _end) {
-				log(LOG_ERROR, "remove long!!! cap=%d len=%d", _cap, len);
+				net_log_error("remove long!!! cap=%d len=%d\n", _cap, len);
 				_begin = _end = 0;
 				return;
 			}
@@ -110,21 +114,35 @@ size_t NetBuffer::length() {
 	}
 }
 
+void _copyTo(uint8_t*dst, uint8_t*src, size_t startPos, size_t endPos, size_t cap, size_t size) {
+	if (startPos < endPos) {
+		memcpy(dst, src + startPos, size);
+	} else {
+		if (cap - startPos > size) {
+			memcpy(dst, src + startPos, size);
+		} else {
+			memcpy(dst, src + startPos, cap - startPos);
+			memcpy(dst, src, size + startPos - cap);
+		}
+	}
+}
+
+bool NetBuffer::copyTo(uint8_t*buf, size_t startPos, size_t size) {
+	if (startPos + size > length()){
+		return false;
+	}
+	size_t begin = (startPos + _begin) % _cap;
+
+	_copyTo(buf, _buffer, begin, _end, _cap, size);
+	return true;
+}
+
 bool NetBuffer::copyTo(uint8_t* buf, size_t size) {
 	if (size > length()) {
 		return false;
 	}
 
-	if (_begin < _end) {
-		memcpy(buf, _buffer + _begin, size);
-	} else {
-		if (_cap - _begin > size) {
-			memcpy(buf, _buffer + _begin, size);
-		} else {
-			memcpy(buf, _buffer + _begin, _cap - _begin);
-			memcpy(buf, _buffer, size + _begin - _cap);
-		}
-	}
+	_copyTo(buf, _buffer, _begin, _end, _cap, size);
 	return true;
 }
 

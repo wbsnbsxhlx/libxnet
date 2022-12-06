@@ -19,12 +19,13 @@ public:
 	NetConnection();
 	~NetConnection();
 
-	bool init(Network* network, SOCKET so, const char* ip, unsigned short port);
+	virtual bool init() { return true; }
+	bool initNetwork(Network* network, SOCKET so, const char* ip, unsigned short port);
 	bool setNetwork(Network* network);
 	Network* getNetwork() { return _network; }
 
 	bool write(void* data, size_t size);
-	bool initBufSize(int _sendBufSize, int _recvBufSize);
+	virtual bool initBufSize(size_t sendBufSize, size_t recvBufSize);
 	bool setConnId(net_conn_id_t connId);
 
 	bool hasSendData(){ return _sendBuffer.empty(); }
@@ -36,7 +37,7 @@ public:
 	bool send();
 	void recv();
 
-	void procRecv();
+	bool procRecv();
 
 	void close();
 	void shutdown();
@@ -68,7 +69,6 @@ private:
 protected:
 	virtual bool onProcRecv() = 0;
 	virtual bool onWrite(void* data, size_t size) = 0;
-
 	NetBuffer _sendBuffer;
 	std::mutex _sendBufLock;
 	NetBuffer _recvBuffer;

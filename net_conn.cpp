@@ -8,7 +8,8 @@ NetConnection::NetConnection()
 	_network(nullptr),
 	_port(0),
 	_socket(INVALID_SOCKET),
-	_closeFlag(false){
+	_closeFlag(false),
+	_isSending(false) {
 	sender = new NetConnectionOverlapped();
 	recver = new NetConnectionOverlapped();
 	sender->isSender = true;
@@ -21,18 +22,18 @@ NetConnection::~NetConnection() {
 	delete recver;
 }
 
-bool NetConnection::init(Network* network, SOCKET so, const char* ip, unsigned short port) {
+bool NetConnection::initNetwork(Network* network, SOCKET so, const char* ip, unsigned short port) {
 	if (_socket != INVALID_SOCKET) {
-		log(LOG_ERROR, "_socket is exsist!");
+		net_log_error("_socket is exsist!");
 		return false;
 	}
 	if (so == INVALID_SOCKET) {
-		log(LOG_ERROR, "param so is invalid");
+		net_log_error("param so is invalid");
 		return false;
 	}
 
 	if (_network != nullptr) {
-		log(LOG_ERROR, "network is exsist!");
+		net_log_error("network is exsist!");
 		return false;
 	}
 
@@ -48,26 +49,30 @@ bool NetConnection::init(Network* network, SOCKET so, const char* ip, unsigned s
 	return true;
 }
 
-bool NetConnection::initBufSize(int sendBufSize, int recvBufSize) {
+bool NetConnection::initBufSize(size_t sendBufSize, size_t recvBufSize) {
 	_sendBuffer.init(sendBufSize);
 	_recvBuffer.init(recvBufSize);
 	return true;
 }
 
 bool NetConnection::write(void* data, size_t size) {
-	if (size >= 0xffff){
+	bool isWrite = false;
+	if (size >= 0xffff) {
 		close();
 		return false;
 	}
 	std::lock_guard<std::mutex> l(_sendBufLock);
 	onWrite(data, size);
 	_sendBuffer.write(data, size);
+	if (_sendBuffer.length() > 0) {
+		send();
+	}
 	return true;
 }
 
 bool NetConnection::setConnId(net_conn_id_t connId) {
 	if (_connId != INVALID_CONN_ID) {
-		log(LOG_ERROR, "connection is exsist! connId=", _connId);
+		net_log_error("connection is exsist! connId=", _connId);
 		return false;
 	}
 	_connId = connId;
@@ -75,8 +80,7 @@ bool NetConnection::setConnId(net_conn_id_t connId) {
 }
 
 bool NetConnection::send() {
-	std::lock_guard<std::mutex> l(_sendBufLock);
-	if (_closeFlag){
+	if (_closeFlag) {
 		close();
 		return false;
 	}
@@ -95,7 +99,7 @@ bool NetConnection::send() {
 	if (0 != WSASend(_socket, &wsabuf, 1, &dw, 0, sender, NULL)) {
 		int error = GetLastError();
 		if (error != ERROR_IO_PENDING) {
-			log(LOG_ERROR, "connection is exsist! %s", error);
+			net_log_error("connection is exsist! %s", error);
 			close();
 			return false;
 		}
@@ -127,7 +131,7 @@ void NetConnection::recv() {
 	}
 
 	wsabuf.buf = (char *)_recvBuffer.pickWrite(&len);
-	if (len == 0){
+	if (len == 0) {
 		net_log_error("recv buffer is full.");
 		close();
 		return;
@@ -136,18 +140,18 @@ void NetConnection::recv() {
 	if (WSARecv(_socket, &wsabuf, 1, &dw, &fg, recver, NULL) != 0) {
 		int error = GetLastError();
 		if (error != ERROR_IO_PENDING) {
-			log(LOG_ERROR, "%d", WSAGetLastError());
+			net_log_error("wsarecv error:%d", WSAGetLastError());
 			close();
 		}
 	}
 }
 
-void NetConnection::procRecv() {
+bool NetConnection::procRecv() {
 	std::lock_guard<std::mutex> l(_recvBufLock);
 	if (_recvBuffer.empty()) {
-		return;
+		return true;
 	}
-	while(onProcRecv());
+	return onProcRecv();
 }
 
 void NetConnection::close() {

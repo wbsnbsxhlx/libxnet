@@ -53,7 +53,7 @@ void NetConnectionPool::_freeConn(NetConnection* conn) {
 	_freeConnVec.push_back(conn);
 }
 
-NetConnection* NetConnectionPool::createConn(SOCKET so, const char* ip, unsigned short port) {
+NetConnection* NetConnectionPool::createConn() {
 	std::lock_guard<std::mutex> l(_connmapLock);
 	NetConnection* ret = _getFreeConn();
 	if (ret == nullptr) {

@@ -45,6 +45,7 @@ private:
 public:
 	void freeMsg(net_msg_s& msg);
 	void pushMsg(net_msg_s& msg);
+	void pushMsg(int typ, net_conn_id_t conn_id, uint8_t* data, size_t size);
 	bool popMsg(net_msg_s& msg);
 };
 

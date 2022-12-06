@@ -11,7 +11,7 @@ class NetConnectionPool
 {
 public:
 	NetConnectionPool(int netmode);
-	NetConnection* createConn(SOCKET so, const char* ip, unsigned short port);
+	NetConnection* createConn();
 	bool removeConn(net_conn_id_t connId);
 
 	NetConnection* getConn(net_conn_id_t id);

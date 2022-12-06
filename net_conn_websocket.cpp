@@ -2,6 +2,7 @@
 #include "net_buffer.h"
 #include "libxnet.h"
 #include "net_conn.h"
+#include "net_log.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -239,33 +240,33 @@ unsigned int base64_encode(const unsigned char *in, unsigned int inlen, char *ou
 		c = in[i];
 
 		switch (s) {
-		case 0:
-			s = 1;
-			out[j++] = base64en[(c >> 2) & 0x3F];
-			break;
-		case 1:
-			s = 2;
-			out[j++] = base64en[((l & 0x3) << 4) | ((c >> 4) & 0xF)];
-			break;
-		case 2:
-			s = 0;
-			out[j++] = base64en[((l & 0xF) << 2) | ((c >> 6) & 0x3)];
-			out[j++] = base64en[c & 0x3F];
-			break;
+			case 0:
+				s = 1;
+				out[j++] = base64en[(c >> 2) & 0x3F];
+				break;
+			case 1:
+				s = 2;
+				out[j++] = base64en[((l & 0x3) << 4) | ((c >> 4) & 0xF)];
+				break;
+			case 2:
+				s = 0;
+				out[j++] = base64en[((l & 0xF) << 2) | ((c >> 6) & 0x3)];
+				out[j++] = base64en[c & 0x3F];
+				break;
 		}
 		l = c;
 	}
 
 	switch (s) {
-	case 1:
-		out[j++] = base64en[(l & 0x3) << 4];
-		out[j++] = '=';
-		out[j++] = '=';
-		break;
-	case 2:
-		out[j++] = base64en[(l & 0xF) << 2];
-		out[j++] = '=';
-		break;
+		case 1:
+			out[j++] = base64en[(l & 0x3) << 4];
+			out[j++] = '=';
+			out[j++] = '=';
+			break;
+		case 2:
+			out[j++] = base64en[(l & 0xF) << 2];
+			out[j++] = '=';
+			break;
 	}
 
 	out[j] = 0;
@@ -296,34 +297,55 @@ unsigned int base64_decode(const char *in, unsigned int inlen, unsigned char *ou
 		}
 
 		switch (i & 0x3) {
-		case 0:
-			out[j] = (c << 2) & 0xFF;
-			break;
-		case 1:
-			out[j++] |= (c >> 4) & 0x3;
-			out[j] = (c & 0xF) << 4;
-			break;
-		case 2:
-			out[j++] |= (c >> 2) & 0xF;
-			out[j] = (c & 0x3) << 6;
-			break;
-		case 3:
-			out[j++] |= c;
-			break;
+			case 0:
+				out[j] = (c << 2) & 0xFF;
+				break;
+			case 1:
+				out[j++] |= (c >> 4) & 0x3;
+				out[j] = (c & 0xF) << 4;
+				break;
+			case 2:
+				out[j++] |= (c >> 2) & 0xF;
+				out[j] = (c & 0x3) << 6;
+				break;
+			case 3:
+				out[j++] |= c;
+				break;
 		}
 	}
 
 	return j;
 }
 
-
 NetConnectionWebsocket::NetConnectionWebsocket()
-	:state(WS_WAITING_HANDSHAKE) {
-
+	:_dataBuffer(nullptr) {
+	init();
 }
 
 NetConnectionWebsocket::~NetConnectionWebsocket() {
+	if (_dataBuffer != nullptr) {
+		delete[] _dataBuffer;
+	}
+}
 
+bool NetConnectionWebsocket::init() {
+	state = WS_WAITING_HANDSHAKE;
+	_dataSize = 0;
+	_mask = 0;
+	_bufSize = 0;
+
+	return true;
+}
+
+bool NetConnectionWebsocket::initBufSize(size_t sendBufSize, size_t recvBufSize) {
+	if (!NetConnection::initBufSize(sendBufSize, recvBufSize) || _dataBuffer != nullptr) {
+		net_log_error("initBufferSize error");
+		return false;
+	}
+
+	_dataBuffer = new uint8_t[recvBufSize+4];
+
+	return true;
 }
 
 bool splitKeyValue(const uint8_t* line, size_t size, const uint8_t** key, const uint8_t** value) {
@@ -349,20 +371,21 @@ bool readLine(uint8_t *buf, uint32_t *size) {
 	return true;
 }
 
-int _procHandshake(NetBuffer& recvBuffer, char *outBuf, size_t *outSize) {
-	if (recvBuffer.length() > 2048) {
+int NetConnectionWebsocket::_procHandshake(char *outBuf, size_t *outSize) {
+	if (_recvBuffer.length() > 2048) {
+		net_log_error("Handshake is too long %d\n", _recvBuffer.length());
 		return -1;
 	}
 	uint8_t header[2048];
-	recvBuffer.copyTo(header);
+	_recvBuffer.copyTo(header);
 	char *p = strstr((char *)header, "\r\n\r\n");
 	if (p == nullptr) {
 		return 0;
 	}
 	*(p + 2) = 0;
-	recvBuffer.readLen(p - (char *)header + 4);
+	_recvBuffer.readLen(p - (char *)header + 4);
 
-	printf("src:\n%s\n", (char *)header);
+	//printf("src:\n%s\n", (char *)header);
 
 	size_t size;
 	uint8_t* line = header;
@@ -372,114 +395,183 @@ int _procHandshake(NetBuffer& recvBuffer, char *outBuf, size_t *outSize) {
 	*outSize = 0;
 	while (readLine(line, &size)) {
 		if (!splitKeyValue(line, size, &key, &value)) {
+			net_log_error("header parse error %d\n");
 			return -1;
 		}
 		switch (*(uint32_t*)key) {
-		case 0x2d636553:
-			if (*(key + 13) != '-') {
-				return -1;
-			}
-			if (*(uint32_t*)(key + 14) == 0x3a79654b) {// Sec-WebSocket-Key:
-				if (*outSize == 0) return -1;
-				size_t valueLen = size - (value - key);
-				if (valueLen >= 40) {
+			case 0x2d636553:
+				if (*(key + 13) != '-') {
+					net_log_error("Sec-WebSocket- parse error\n");
 					return -1;
 				}
-				char websocketKey[40];
-				memcpy(websocketKey, value, valueLen);
-				websocketKey[valueLen] = 0;
-				char srcKey[128];
-				int n = sprintf_s(srcKey, "%s%s", websocketKey, "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
-				char sha1[20];
-				SHA1(sha1, srcKey, strlen(srcKey));
-				char base64[40];
-				base64_encode((const unsigned char*)sha1, 20, base64);
+				if (*(uint32_t*)(key + 14) == 0x3a79654b) {// Sec-WebSocket-Key:
+					if (*outSize == 0)return -1;
+					size_t valueLen = size - (value - key);
+					if (valueLen >= 40) {
+						net_log_error("Sec-WebSocket- too long %d\n", valueLen);
+						return -1;
+					}
+					char websocketKey[40];
+					memcpy(websocketKey, value, valueLen);
+					websocketKey[valueLen] = 0;
+					char srcKey[128];
+					int n = sprintf_s(srcKey, "%s%s", websocketKey, "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+					char sha1[20];
+					SHA1(sha1, srcKey, strlen(srcKey));
+					char base64[40];
+					base64_encode((const unsigned char*)sha1, 20, base64);
 
-				*outSize += sprintf_s(outBuf + *outSize, 1024 - *outSize, "%s%s\r\n", "Sec-WebSocket-Accept: ", base64);
+					*outSize += sprintf_s(outBuf + *outSize, 1024 - *outSize, "%s%s\r\n", "Sec-WebSocket-Accept: ", base64);
+					fixedNeed++;
+				} else if (*(uint32_t*)(key + 14) == 0x746f7250) {// Sec-WebSocket-Protocol:
+					if (*outSize == 0) return -1;
+					memcpy(outBuf + *outSize, line, size + 2);
+				}
+				break;
+			case 0x20544547:// GET /WebSocket/LiveVideo HTTP/1.1
+				if (*outSize != 0) return -1;
+				*outSize += sprintf_s(outBuf + *outSize, 1024 - *outSize, "%s\r\n", "HTTP/1.1 101 Switching Protocols");
 				fixedNeed++;
-
-			} else if (*(uint32_t*)(key + 14) == 0x746f7250) {// Sec-WebSocket-Protocol:
+				break;
+			case 0x72677055:// Upgrade: WebSocket
 				if (*outSize == 0) return -1;
-				memcpy(outBuf + *outSize, line, size + 2);
-			}
-			break;
-		case 0x20544547:// GET /WebSocket/LiveVideo HTTP/1.1
-			if (*outSize != 0) return -1;
-			*outSize += sprintf_s(outBuf + *outSize, 1024 - *outSize, "%s\r\n", "HTTP/1.1 101 Switching Protocols");
-			fixedNeed++;
-			break;
-		case 0x72677055:// Upgrade: WebSocket
-			if (*outSize == 0) return -1;
-			*outSize += sprintf_s(outBuf + *outSize, 1024 - *outSize, "%s\r\n", "Upgrade: websocket");
-			fixedNeed++;
-			break;
-		case 0x6e6e6f43:// Connection: Upgrade
-			if (*outSize == 0) return -1;
-			*outSize += sprintf_s(outBuf + *outSize, 1024 - *outSize, "%s\r\n", "Connection: Upgrade");
-			fixedNeed++;
-			break;
+				*outSize += sprintf_s(outBuf + *outSize, 1024 - *outSize, "%s\r\n", "Upgrade: websocket");
+				fixedNeed++;
+				break;
+			case 0x6e6e6f43:// Connection: Upgrade
+				if (*outSize == 0) return -1;
+				*outSize += sprintf_s(outBuf + *outSize, 1024 - *outSize, "%s\r\n", "Connection: Upgrade");
+				fixedNeed++;
+				break;
 		}
 		line += size + 2;
 	}
 
 	if (fixedNeed != 4) {
+		net_log_error("header parse error %d\n");
 		return -1;
 	}
 
 	return 1;
 }
+
+int NetConnectionWebsocket::_procFrameHead() {
+	size_t readCount = 0;
+	if (!_recvBuffer.copyTo((uint8_t*)&_frameHeader._wordHead, readCount, 2)) {
+		return 0;
+	}
+	readCount += 2;
+
+	uint32_t len;
+	if (_frameHeader.payloadLen < 126) {
+		len = _frameHeader.payloadLen;
+	} else if (_frameHeader.payloadLen == 126) {
+		uint16_t len16;
+		if (!_recvBuffer.copyTo((uint8_t*)&len16, readCount, 2)) {
+			return 0;
+		}
+		readCount += 2;
+		len = ntohs(len16);
+	} else {
+		net_log_error("buffer size is too long\n");
+		return -1;
+	}
+	if (_bufSize + len > _recvBuffer.cap()) {
+		net_log_error("buffer size is too long:%d\n", _bufSize+len);
+		return -1;
+	}
+
+	if (_frameHeader.mask == 0) {
+		net_log_error("client msg no mask\n");
+		return -1;
+	}
+	if (_frameHeader.opcode == 0x8) {
+		return -1;
+	}
+
+	if (!_recvBuffer.copyTo((uint8_t*)&_mask, readCount, 4)) {
+		return 0;
+	}
+	readCount += 4;
+
+	_dataSize = len;
+
+	_recvBuffer.readLen(readCount);
+	return 1;
+}
+
+int NetConnectionWebsocket::_procFrameData() {
+	if (_dataSize == 0){
+		return 1;
+	}
+	if (_dataSize + _bufSize > _recvBuffer.cap()) {
+		net_log_error("buffer size is too long:%d\n", _dataSize + _bufSize);
+		return -1;
+	}
+	if (_dataSize > _recvBuffer.length()){
+		return 0;
+	}
+	_recvBuffer.copyTo(_dataBuffer, _bufSize, _dataSize);
+
+	uint32_t* it = (uint32_t*)&_dataBuffer[_bufSize];
+	for (int i = _bufSize; i < _dataSize; i+=4){
+		*it++ ^= _mask;
+	}
+	_bufSize += _dataSize;
+
+	_recvBuffer.readLen(_dataSize);
+
+	if (_frameHeader.fin == 1){
+		return 1;
+	}
+
+	return 2;
+}
+
 bool NetConnectionWebsocket::onProcRecv() {
 	int result;
-	switch (state) {
-	case WS_WAITING_HANDSHAKE:
-		char outBuf[1024];
-		size_t outSize;
-		result = _procHandshake(_recvBuffer, outBuf, &outSize);
-		if (result == 0) {
-			return false;
+	while (true){
+		switch (state) {
+			case WS_WAITING_HANDSHAKE:
+				char outBuf[1024];
+				size_t outSize;
+				result = _procHandshake(outBuf, &outSize);
+				if (result == 1) {
+					if (outSize == 0) {
+						result = -1;
+						break;
+					}
+					outSize += sprintf_s(outBuf + outSize, 1024 - outSize, "\r\n");
+					write(outBuf, outSize);
+
+					getNetwork()->pushMsg(NET_MSG_CONNECTED, getConnId(), nullptr, 0);
+
+					state = WS_FRAME_HEAD;
+				}
+				break;
+			case WS_FRAME_HEAD:
+				result = _procFrameHead();
+				if (result == 1) {
+					state = WS_FRAME_DATA;
+				}
+				break;
+			case WS_FRAME_DATA:
+				result = _procFrameData();
+				if (result == 1) {
+					state = WS_FRAME_HEAD;
+					if (_bufSize != 0) {
+						getNetwork()->pushMsg(NET_MSG_DATA, getConnId(), _dataBuffer, _bufSize);
+					}
+					_bufSize = 0;
+				}
+				break;
+		}
+		if (result == 0){
+			return true;
 		} else if (result == -1) {
 			close();
 			return false;
-		} else if (result == 1) {
-			if (outSize == 0) {
-				close();
-				return false;
-			}
-			outSize += sprintf_s(outBuf + outSize, 1024 - outSize, "\r\n");
-			printf("resp:\n%s\n", outBuf);
-
-			if (write(outBuf, outSize)){
-				send();
-			}
-
-			net_msg_s msg;
-			msg.conn_id = getConnId();
-			msg.type = NET_MSG_CONNECTED;
-			msg.data = nullptr;
-			msg.size = 0;
-			getNetwork()->pushMsg(msg);
-
-			state = WS_OPENED_READHEAD;
-			return true;
 		}
-		break;
-	default:
-		size_t len;
-		uint8_t *header = _recvBuffer.pickRead(&len);
-		char buffer[9] = { 0 };
-		for (int i = 0; i < len; i++) {
-			itoa(header[i], buffer, 2);
-			printf("%s,", buffer);
-		}
-		break;
-		//case WS_OPENED_READHEAD:
-		//	break;
-		//case WS_OPENED_READDATA:
-		//	break;
-		//case WS_ERROR:
-		//	break;
-		//default:
-		//	break;
 	}
 	return false;
 }
@@ -491,4 +583,3 @@ void NetConnectionWebsocket::onConnCreate() {
 bool NetConnectionWebsocket::onWrite(void* data, size_t size) {
 	return false;
 }
-

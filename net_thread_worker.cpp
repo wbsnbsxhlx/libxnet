@@ -52,11 +52,12 @@ void NetThreadWroker::run() {
 				if (no->isSender) {
 					no->conn->sendedLength(dwNumRead);
 					no->conn->setSendingFlag(false);
-					no->conn->send();
+					no->conn->write(0, 0);
 				} else {
 					no->conn->recvedLength(dwNumRead);
-					no->conn->procRecv();
-					no->conn->recv();
+					if (no->conn->procRecv()){
+						no->conn->recv();
+					}
 				}
 			} else {
 				no->conn->close();

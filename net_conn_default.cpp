@@ -5,26 +5,33 @@
 bool NetConnectionDefault::onProcRecv() {
 	NetMsgHeader header;
 	size_t headerSize = sizeof(NetMsgHeader);
-	if (headerSize > _recvBuffer.length()) {
-		return false;
+	while (true) {
+		if (headerSize > _recvBuffer.length()) {
+			return true;
+		}
+
+		_recvBuffer.copyTo((uint8_t*)&header, headerSize);
+
+		if (header.size > _recvBuffer.cap()) {
+			net_log_error("msg size is too long %d\n", header.size);
+			return false;
+		}
+		if (header.size + headerSize > _recvBuffer.length()) {
+			return true;
+		}
+		_recvBuffer.readLen(headerSize);
+
+		net_msg_s msg;
+		msg.data = new uint8_t[header.size];
+		_recvBuffer.copyTo(msg.data, header.size);
+		msg.size = header.size;
+		msg.conn_id = getConnId();
+		msg.type = NET_MSG_DATA;
+		getNetwork()->pushMsg(msg);
+
+		_recvBuffer.readLen(header.size);
 	}
 
-	_recvBuffer.copyTo((uint8_t*)&header, headerSize);
-
-	if (header.size + headerSize > _recvBuffer.length()) {
-		return false;
-	}
-	_recvBuffer.readLen(headerSize);
-
-	net_msg_s msg;
-	msg.data = new uint8_t[header.size];
-	_recvBuffer.copyTo(msg.data, header.size);
-	msg.size = header.size;
-	msg.conn_id = getConnId();
-	msg.type = NET_MSG_DATA;
-	getNetwork()->pushMsg(msg);
-
-	_recvBuffer.readLen(header.size);
 	return true;
 }
 
