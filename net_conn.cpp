@@ -7,7 +7,8 @@ NetConnection::NetConnection()
 	:_connId(INVALID_CONN_ID),
 	_network(nullptr),
 	_port(0),
-	_socket(INVALID_SOCKET){
+	_socket(INVALID_SOCKET),
+	_closeFlag(false){
 	sender = new NetConnectionOverlapped();
 	recver = new NetConnectionOverlapped();
 	sender->isSender = true;
@@ -35,6 +36,7 @@ bool NetConnection::init(Network* network, SOCKET so, const char* ip, unsigned s
 		return false;
 	}
 
+	_closeFlag = false;
 	_network = network;
 	_socket = so;
 	strcpy_s(_ip, ip);
@@ -53,9 +55,14 @@ bool NetConnection::initBufSize(int sendBufSize, int recvBufSize) {
 }
 
 bool NetConnection::write(void* data, size_t size) {
+	if (size >= 0xffff){
+		close();
+		return false;
+	}
 	std::lock_guard<std::mutex> l(_sendBufLock);
 	onWrite(data, size);
-	return false;
+	_sendBuffer.write(data, size);
+	return true;
 }
 
 bool NetConnection::setConnId(net_conn_id_t connId) {
@@ -69,7 +76,12 @@ bool NetConnection::setConnId(net_conn_id_t connId) {
 
 bool NetConnection::send() {
 	std::lock_guard<std::mutex> l(_sendBufLock);
-	if (_sendBuffer.length() == 0){
+	if (_closeFlag){
+		close();
+		return false;
+	}
+
+	if (_sendBuffer.length() == 0 || _isSending) {
 		return false;
 	}
 
@@ -79,6 +91,7 @@ bool NetConnection::send() {
 	wsabuf.buf = (char *)_sendBuffer.pickRead(&len);
 	wsabuf.len = len;
 
+	setSendingFlag(true);
 	if (0 != WSASend(_socket, &wsabuf, 1, &dw, 0, sender, NULL)) {
 		int error = GetLastError();
 		if (error != ERROR_IO_PENDING) {
@@ -107,7 +120,18 @@ void NetConnection::recv() {
 	size_t len;
 
 	std::lock_guard<std::mutex> l(_recvBufLock);
+
+	if (_closeFlag) {
+		close();
+		return;
+	}
+
 	wsabuf.buf = (char *)_recvBuffer.pickWrite(&len);
+	if (len == 0){
+		net_log_error("recv buffer is full.");
+		close();
+		return;
+	}
 	wsabuf.len = len;
 	if (WSARecv(_socket, &wsabuf, 1, &dw, &fg, recver, NULL) != 0) {
 		int error = GetLastError();

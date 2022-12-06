@@ -448,7 +448,9 @@ bool NetConnectionWebsocket::onProcRecv() {
 			outSize += sprintf_s(outBuf + outSize, 1024 - outSize, "\r\n");
 			printf("resp:\n%s\n", outBuf);
 
-			onWrite(outBuf, outSize);
+			if (write(outBuf, outSize)){
+				send();
+			}
 
 			net_msg_s msg;
 			msg.conn_id = getConnId();

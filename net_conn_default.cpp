@@ -12,7 +12,6 @@ bool NetConnectionDefault::onProcRecv() {
 	_recvBuffer.copyTo((uint8_t*)&header, headerSize);
 
 	if (header.size + headerSize > _recvBuffer.length()) {
-		//net_log_error("connection recv data is too long size:%d", header.size);
 		return false;
 	}
 	_recvBuffer.readLen(headerSize);

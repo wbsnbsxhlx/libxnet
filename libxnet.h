@@ -45,6 +45,7 @@ extern "C" {
 
 	LIBXNET_API int net_listen(network_t network, const char* local_addr, unsigned short port);
 	LIBXNET_API net_conn_id_t net_connect(network_t network, const char* remote_addr, unsigned short port);
+	LIBXNET_API void net_disconnect(network_t network, net_conn_id_t conn_id);
 
 	LIBXNET_API int net_send(network_t network, net_conn_id_t connId, void* data, size_t size);
 	LIBXNET_API int net_recv(network_t network, net_msg_s* msg);

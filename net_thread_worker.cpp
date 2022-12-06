@@ -51,6 +51,7 @@ void NetThreadWroker::run() {
 			if (bResult) {
 				if (no->isSender) {
 					no->conn->sendedLength(dwNumRead);
+					no->conn->setSendingFlag(false);
 					no->conn->send();
 				} else {
 					no->conn->recvedLength(dwNumRead);

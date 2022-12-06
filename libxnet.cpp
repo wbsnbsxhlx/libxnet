@@ -20,13 +20,27 @@ LIBXNET_API void net_destroy(network_t* network) {
 
 LIBXNET_API int net_listen(network_t id, const char* ip, unsigned short port) {
 	Network* network = NetworkManager::getInstance()->getNetwork(id);
-	if (network != nullptr) {
-		return network->listen(ip, port) ? 0 : -1;
-	} else {
-		log(LOG_ERROR, "id:%d", id);
+	if (network == nullptr) {
+		net_log_error("network is null:%d", id);
+		return -1;
 	}
-	return -1;
+	return network->listen(ip, port) ? 0 : -1;
 }
+
+LIBXNET_API void net_disconnect(network_t id, net_conn_id_t conn_id) {
+	Network* network = NetworkManager::getInstance()->getNetwork(id);
+	if (network == nullptr) {
+		net_log_error("network is null:%d", id);
+		return;
+	}
+	NetConnection* conn = network->getConn(conn_id);
+	if (conn == nullptr) {
+		log(LOG_ERROR, "conn is not exsist id:%d", conn_id);
+		return;
+	}
+	conn->setCloseFlag(true);
+}
+
 
 LIBXNET_API int net_send(network_t id, net_conn_id_t connId, void* data, size_t size) {
 	Network* network = NetworkManager::getInstance()->getNetwork(id);

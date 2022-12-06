@@ -44,12 +44,23 @@ public:
 	void recvedLength(size_t len);
 	void sendedLength(size_t len);
 
+	inline void setCloseFlag(bool flag) {
+		_closeFlag = flag;
+	}
+
+	inline void setSendingFlag(bool flag) {
+		_isSending = flag;
+	}
+
 	virtual void onConnCreate() = 0;
 private:
 	net_conn_id_t _connId;
 	char _ip[16];
 	unsigned short _port;
 	SOCKET _socket;
+
+	bool _closeFlag;
+	bool _isSending;
 
 	Network* _network;
 	std::mutex _shutdownLock;
