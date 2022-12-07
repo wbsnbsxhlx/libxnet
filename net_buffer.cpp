@@ -25,11 +25,11 @@ void NetBuffer::init(size_t size) {
 bool NetBuffer::write(void* data, size_t size) {
 	if (size == 0){
 		//net_log_error("write size is 0\n");
-		return false;
+		return true;
 	}
 	if (_begin <= _end) {
 		if (_cap - _end + _begin <= size) {
-			net_log_error("size is long! size = %d cap = %d\n", size, _cap);
+			net_log_error("size is long! size = %d begin=%d end=%d cap = %d\n", size, _begin, _end, _cap);
 			return false;
 		}
 		size_t maxLen = size < (_cap - _end) ? size : (_cap - _end);
@@ -40,12 +40,12 @@ bool NetBuffer::write(void* data, size_t size) {
 		}
 	} else {
 		if (_begin - _end <= size) {
-			net_log_error("size is long! size = %d cap = %d\n", size, _cap);
+			net_log_error("size is long! size = %d begin=%d end=%d cap = %d\n", size, _begin, _end, _cap);
 			return false;
 		}
 		memcpy(_buffer + _end, data, size);
 	}
-	_end += (_end + size) > _cap ? (_end + size - _cap) : (_end + size);
+	_end = (_end + size) > _cap ? (_end + size - _cap) : (_end + size);
 	return true;
 }
 
@@ -77,14 +77,14 @@ void NetBuffer::writeLen(int len) {
 
 void NetBuffer::readLen(size_t len) {
 	if (len > _cap - 1) {
-		net_log_error("remove long! cap=%d len=%d\n", _cap, len);
+		net_log_error("remove long! len = %d begin=%d end=%d cap = %d\n", len, _begin, _end, _cap);
 		return;
 	}
 	if (_begin < _end) {
 		_begin += len;
 
 		if (_begin > _end) {
-			net_log_error("remove long!! cap=%d len=%d\n", _cap, len);
+			net_log_error("remove long!! len = %d begin=%d end=%d cap = %d\n", len, _begin, _end, _cap);
 			_begin = _end = 0;
 			return;
 		}
@@ -94,7 +94,7 @@ void NetBuffer::readLen(size_t len) {
 			_begin -= _cap;
 
 			if (_begin > _end) {
-				net_log_error("remove long!!! cap=%d len=%d\n", _cap, len);
+				net_log_error("remove long!!! len = %d begin=%d end=%d cap = %d\n", len, _begin, _end, _cap);
 				_begin = _end = 0;
 				return;
 			}

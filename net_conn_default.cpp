@@ -45,6 +45,6 @@ void NetConnectionDefault::onConnCreate() {
 }
 
 bool NetConnectionDefault::onWrite(void* data, size_t size) {
-	return false;
+	return true;
 }
 

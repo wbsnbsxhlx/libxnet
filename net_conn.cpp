@@ -62,10 +62,14 @@ bool NetConnection::write(void* data, size_t size) {
 		return false;
 	}
 	std::lock_guard<std::mutex> l(_sendBufLock);
-	onWrite(data, size);
-	_sendBuffer.write(data, size);
-	if (_sendBuffer.length() > 0) {
-		send();
+	if (!onWrite(data, size))
+	{
+		close();
+		return false;
+	}
+	if (!_sendBuffer.write(data, size)) {
+		close();
+		return false;
 	}
 	return true;
 }
@@ -80,6 +84,8 @@ bool NetConnection::setConnId(net_conn_id_t connId) {
 }
 
 bool NetConnection::send() {
+	std::lock_guard<std::mutex> l(_sendBufLock);
+
 	if (_closeFlag) {
 		close();
 		return false;
@@ -99,7 +105,7 @@ bool NetConnection::send() {
 	if (0 != WSASend(_socket, &wsabuf, 1, &dw, 0, sender, NULL)) {
 		int error = GetLastError();
 		if (error != ERROR_IO_PENDING) {
-			net_log_error("connection is exsist! %s", error);
+			net_log_error("connection is exsist! %d", error);
 			close();
 			return false;
 		}

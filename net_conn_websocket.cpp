@@ -542,7 +542,9 @@ bool NetConnectionWebsocket::onProcRecv() {
 						break;
 					}
 					outSize += sprintf_s(outBuf + outSize, 1024 - outSize, "\r\n");
-					write(outBuf, outSize);
+					if (write(outBuf, outSize)){
+						send();
+					}
 
 					getNetwork()->pushMsg(NET_MSG_CONNECTED, getConnId(), nullptr, 0);
 
@@ -581,5 +583,27 @@ void NetConnectionWebsocket::onConnCreate() {
 }
 
 bool NetConnectionWebsocket::onWrite(void* data, size_t size) {
-	return false;
+	if (state == WS_WAITING_HANDSHAKE || data == 0){
+		return true;
+	}
+	FrameHeader header;
+	header._wordHead = 0;
+	header.fin = 1;
+	header.opcode = 2;
+	header.mask = 0;
+
+	size_t len = 2;
+	if (size < 126){
+		header.payloadLen = size;
+	} else if (size <= 0xffff) {
+		header.payloadLen = 126;
+		header.payloadLen16 = htons((uint16_t)size);
+		len = 4;
+	} else {
+		return false;
+	}
+
+	_sendBuffer.write(&header, len);
+
+	return true;
 }
