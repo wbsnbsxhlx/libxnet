@@ -2,8 +2,6 @@
 #define net_thread_worker_h__
 
 #include <thread>
-#include <list>
-#include "net_conn.h"
 
 //struct net_fd_set;
 class NetThreadWroker{

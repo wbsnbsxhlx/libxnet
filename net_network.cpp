@@ -2,6 +2,7 @@
 #include "net_log.h"
 #include "net_thread_listener.h"
 #include "net_thread_worker.h"
+#include "net_conn.h"
 #include <thread>
 
 Network::Network(int mode)
