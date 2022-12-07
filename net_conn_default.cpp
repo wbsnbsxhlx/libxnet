@@ -45,6 +45,11 @@ void NetConnectionDefault::onConnCreate() {
 }
 
 bool NetConnectionDefault::onWrite(void* data, size_t size) {
+	NetConnectionDefault::NetMsgHeader header;
+	header.size = htons(((uint16_t)size));
+
+	_sendBuffer.write(&header, sizeof(header));
+	
 	return true;
 }
 

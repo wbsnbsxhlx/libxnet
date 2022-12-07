@@ -5,7 +5,7 @@
 
 class NetConnectionDefault :public NetConnection {
 	struct NetMsgHeader {
-		uint32_t size;
+		uint16_t size;
 	};
 
 	virtual bool onProcRecv();
