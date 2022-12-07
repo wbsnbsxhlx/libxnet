@@ -13,29 +13,24 @@ Network::Network(int mode)
 	NetMode(mode),
 	_connPool(nullptr),
 	_threadListener(nullptr),
-	_threadWorkerList(nullptr)
-{
-}
+	_threadWorkerList(nullptr) {}
 
-Network::~Network()
-{
-}
+Network::~Network() {}
 
-bool Network::init(int threadNum, int maxClient, int recvBufSize, int sendBufSize)
-{
-	if (threadNum < 1){
+bool Network::init(int threadNum, int maxClient, int recvBufSize, int sendBufSize) {
+	if (threadNum < 1) {
 		log(LOG_ERROR, "[threadNum=%d] threadNum must >1!", threadNum);
 	}
-	if (maxClient < 1){
+	if (maxClient < 1) {
 		log(LOG_ERROR, "[maxClient=%d] maxClient must >1!", maxClient);
 	}
 	if (maxClient > 0x3fff) {
 		log(LOG_ERROR, "[maxClient=%d] maxClient must < %d!", maxClient, 0x3fff);
 	}
-	if (recvBufSize < 64){
+	if (recvBufSize < 64) {
 		log(LOG_ERROR, "[recvBufSize=%d] recvBufSize must >64!", recvBufSize);
 	}
-	if (sendBufSize < 64){
+	if (sendBufSize < 64) {
 		log(LOG_ERROR, "[sendBufSize=%d] sendBufSize must >64!", sendBufSize);
 	}
 
@@ -49,7 +44,7 @@ bool Network::init(int threadNum, int maxClient, int recvBufSize, int sendBufSiz
 
 	_iocp = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
 	_threadWorkerList = new NetThreadWroker*[threadNum];
-	for (int i = 0; i < threadNum; ++i){
+	for (int i = 0; i < threadNum; ++i) {
 		_threadWorkerList[i] = new NetThreadWroker();
 		_threadWorkerList[i]->start(_iocp);
 	}
@@ -57,8 +52,7 @@ bool Network::init(int threadNum, int maxClient, int recvBufSize, int sendBufSiz
 	return true;
 }
 
-bool Network::listen(const char* local_addr, unsigned short port)
-{
+bool Network::listen(const char* local_addr, unsigned short port) {
 	if (_threadListener != nullptr) {
 		log(LOG_ERROR, "_threadListener is exsist");
 		return false;
@@ -69,31 +63,51 @@ bool Network::listen(const char* local_addr, unsigned short port)
 	return _threadListener->start(local_addr, port);
 }
 
-void Network::shutdown()
-{
-	if (_threadListener != nullptr){
+net_conn_id_t Network::connect(const char* remote_addr, unsigned short port) {
+	struct sockaddr_in address;
+	memset(&address, 0, sizeof(address));
+	address.sin_family = AF_INET;
+	address.sin_addr.s_addr = inet_addr(remote_addr);
+	address.sin_port = htons(port);
+
+	SOCKET so = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
+	if (::connect(so, (sockaddr*)&address, sizeof(address)) < 0){
+		closesocket(so);
+		return INVALID_CONN_ID;
+	}
+
+	NetConnection* conn = createConn(so, inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+	if ( conn == nullptr) {
+		::shutdown(so, SD_BOTH);
+		closesocket(so);
+		return INVALID_CONN_ID;
+	}
+
+	return conn->getConnId();
+}
+
+void Network::shutdown() {
+	if (_threadListener != nullptr) {
 		_threadListener->stop();
 		delete _threadListener;
 	}
 
-	for (int i = 0; i < _workerNum; ++i)
-	{
+	for (int i = 0; i < _workerNum; ++i) {
 		_threadWorkerList[i]->stop();
 		delete _threadWorkerList[i];
 	}
 	delete[] _threadWorkerList;
 
-	if (_connPool != nullptr){
+	if (_connPool != nullptr) {
 		_connPool->clear();
 		delete _connPool;
 	}
 }
 
 
-NetConnection* Network::createConn(SOCKET so, const char* ip, unsigned short port)
-{
+NetConnection* Network::createConn(SOCKET so, const char* ip, unsigned short port) {
 	NetConnection *conn = _connPool->createConn();
-	if (conn == nullptr){
+	if (conn == nullptr) {
 		return nullptr;
 	}
 
@@ -110,15 +124,13 @@ NetConnection* Network::createConn(SOCKET so, const char* ip, unsigned short por
 	return conn;
 }
 
-void Network::removeConn(net_conn_id_t connId)
-{
+void Network::removeConn(net_conn_id_t connId) {
 	NetConnection* conn = getConn(connId);
-	if (conn != nullptr){
+	if (conn != nullptr) {
 		conn->shutdown();
 	}
-	
-	if (_connPool->removeConn(connId))
-	{
+
+	if (_connPool->removeConn(connId)) {
 		net_msg_s msg;
 		msg.conn_id = connId;
 		msg.type = NET_MSG_DISCONNECTED;
@@ -140,11 +152,11 @@ void Network::pushMsg(int typ, net_conn_id_t conn_id, uint8_t* data, size_t size
 		msg.data = nullptr;
 		msg.size = 0;
 	}
-	
+
 	msgQueue.pushMsg(msg);
 }
 
-void Network::pushMsg(net_msg_s& msg){
+void Network::pushMsg(net_msg_s& msg) {
 	msgQueue.pushMsg(msg);
 }
 

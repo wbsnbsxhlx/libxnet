@@ -11,6 +11,7 @@ bool NetConnectionDefault::onProcRecv() {
 		}
 
 		_recvBuffer.copyTo((uint8_t*)&header, headerSize);
+		header.size = ntohs(header.size);
 
 		if (header.size > _recvBuffer.cap()) {
 			net_log_error("msg size is too long %d\n", header.size);

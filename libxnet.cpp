@@ -27,6 +27,16 @@ LIBXNET_API int net_listen(network_t id, const char* ip, unsigned short port) {
 	return network->listen(ip, port) ? 0 : -1;
 }
 
+LIBXNET_API net_conn_id_t net_connect(network_t id, const char* ip, unsigned short port) {
+	Network* network = NetworkManager::getInstance()->getNetwork(id);
+	if (network == nullptr) {
+		net_log_error("network is null:%d", id);
+		return INVALID_CONN_ID;
+	}
+
+	return network->connect(ip, port);
+}
+
 LIBXNET_API void net_disconnect(network_t id, net_conn_id_t conn_id) {
 	Network* network = NetworkManager::getInstance()->getNetwork(id);
 	if (network == nullptr) {
