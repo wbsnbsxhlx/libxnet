@@ -15,7 +15,7 @@ LIBXNET_API network_t net_create(int worker_num, int max_client, int recv_buf_si
 
 LIBXNET_API void net_destroy(network_t* network) {
 	NetworkManager::getInstance()->destroyNetwork(*network);
-	*network = -1;
+	*network = INVALID_NETWORK;
 }
 
 LIBXNET_API int net_listen(network_t id, const char* ip, unsigned short port) {
