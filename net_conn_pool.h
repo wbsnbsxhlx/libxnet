@@ -31,7 +31,7 @@ private:
 	int _netMode;
 
 	std::map<net_conn_id_t, NetConnection*> _connMap;
-	std::vector<NetConnection*> _freeConnVec;
+	NetConnection* _freeConnList;
 	net_conn_id_t _connIdMax;
 
 	std::mutex _connmapLock;

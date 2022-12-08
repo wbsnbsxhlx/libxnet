@@ -19,6 +19,8 @@ public:
 	NetConnection();
 	~NetConnection();
 
+	NetConnection* nextConn;
+
 	virtual bool init() { return true; }
 	bool initNetwork(Network* network, SOCKET so, const char* ip, unsigned short port);
 	bool setNetwork(Network* network);

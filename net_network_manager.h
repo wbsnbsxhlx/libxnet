@@ -3,9 +3,8 @@
 
 #include "libxnet.h"
 #include <atomic>
-#include <AccCtrl.h>
 #include <map>
-#include <queue>
+#include <vector>
 #include <mutex>
 
 class Network;

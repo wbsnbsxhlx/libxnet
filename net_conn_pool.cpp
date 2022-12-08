@@ -7,7 +7,8 @@
 
 NetConnectionPool::NetConnectionPool(int netmode)
 	:_connIdMax(1),
-	_netMode(netmode) {
+	_netMode(netmode),
+	_freeConnList(nullptr){
 
 }
 
@@ -27,8 +28,8 @@ void NetConnectionPool::clear() {
 }
 
 NetConnection* NetConnectionPool::_getFreeConn() {
-	NetConnection *ret = nullptr;
-	if (_freeConnVec.size() == 0) {
+	NetConnection *ret = _freeConnList;
+	if (ret == nullptr) {
 		if (_connIdMax >= _maxClient) {
 			return nullptr;
 		}
@@ -40,8 +41,7 @@ NetConnection* NetConnectionPool::_getFreeConn() {
 		ret->initBufSize(_sendBufSize, _recvBufSize);
 		ret->setConnId(_connIdMax++);
 	} else {
-		ret = _freeConnVec.back();
-		_freeConnVec.pop_back();
+		_freeConnList = ret->nextConn;
 	}
 
 	_connMap[ret->getConnId()] = ret;
@@ -50,7 +50,9 @@ NetConnection* NetConnectionPool::_getFreeConn() {
 }
 void NetConnectionPool::_freeConn(NetConnection* conn) {
 	_connMap.erase(conn->getConnId());
-	_freeConnVec.push_back(conn);
+
+	conn->nextConn = _freeConnList;
+	_freeConnList = conn;
 }
 
 NetConnection* NetConnectionPool::createConn() {

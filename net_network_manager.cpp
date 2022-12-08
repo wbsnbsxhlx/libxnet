@@ -36,8 +36,8 @@ network_t NetworkManager::createNetwork(int thread_num, int max_client, int recv
 bool NetworkManager::destroyNetwork(network_t id) {
 	std::lock_guard<std::mutex> l(_nwmapLock);
 
-	if (_networkMap.empty()) {
-		log(LOG_ERROR, "id:%d", id);
+	if (_networkMap.count(id) == 0) {
+		net_log_error("networkid %d is not exsist", id);
 		return false;
 	}
 
