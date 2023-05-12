@@ -34,7 +34,9 @@ public:
 
 	net_conn_id_t getConnId(){ return _connId; }
 
-	SOCKET getSocket(){ return _socket; }
+	SOCKET getSocket() { return _socket; }
+
+	void getConnInfo(char* ip, uint16_t* port);
 
 	bool send();
 	void recv();

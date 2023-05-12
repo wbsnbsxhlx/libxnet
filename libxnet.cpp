@@ -83,3 +83,20 @@ LIBXNET_API void net_free_msg(net_msg_s* msg) {
 		delete[] msg->data;
 	}
 }
+
+LIBXNET_API int net_get_conn_info(network_t id, net_conn_id_t connId, char* ip, uint16_t* port) {
+	Network* network = NetworkManager::getInstance()->getNetwork(id);
+	if (network == nullptr) {
+		log(LOG_ERROR, "id:%d", id);
+		return -1;
+	}
+
+	NetConnection* conn = network->getConn(connId);
+	if (conn == nullptr) {
+		log(LOG_ERROR, "conn is not exsist id:%d", connId);
+		return 0;
+	}
+
+	conn->getConnInfo(ip, port);
+	return 0;
+}

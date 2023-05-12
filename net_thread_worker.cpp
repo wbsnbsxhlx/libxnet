@@ -38,7 +38,11 @@ void NetThreadWroker::stop() {
 void NetThreadWroker::run() {
 	BOOL    bResult;
 	DWORD   dwNumRead;
+#if defined(_WIN64)
+	ULONG_PTR dwKey;
+#else
 	DWORD	dwKey;
+#endif
 	LPOVERLAPPED lpOverlapped;
 	while (_isRun) {
 		bResult = GetQueuedCompletionStatus(_iocp, &dwNumRead, &dwKey, &lpOverlapped, INFINITE);

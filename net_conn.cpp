@@ -83,6 +83,11 @@ bool NetConnection::setConnId(net_conn_id_t connId) {
 	return true;
 }
 
+void NetConnection::getConnInfo(char* ip, uint16_t* port) {
+	strcpy_s(ip, 16, _ip);
+	*port = _port;
+}
+
 bool NetConnection::send() {
 	std::lock_guard<std::mutex> l(_sendBufLock);
 

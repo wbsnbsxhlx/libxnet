@@ -360,7 +360,7 @@ bool splitKeyValue(const uint8_t* line, size_t size, const uint8_t** key, const 
 	return false;
 }
 
-bool readLine(uint8_t *buf, uint32_t *size) {
+bool readLine(uint8_t *buf, size_t *size) {
 	uint8_t *end = (uint8_t *)strstr((char *)buf, "\r\n");
 	if (end == nullptr) {
 		return false;
@@ -386,6 +386,7 @@ int NetConnectionWebsocket::_procHandshake(char *outBuf, size_t *outSize) {
 	_recvBuffer.readLen(p - (char *)header + 4);
 
 	//printf("src:\n%s\n", (char *)header);
+
 
 	size_t size;
 	uint8_t* line = header;
